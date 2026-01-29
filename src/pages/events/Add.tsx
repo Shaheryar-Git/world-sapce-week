@@ -100,13 +100,16 @@ function formatDate(date) {
 	return new Date(date).toLocaleDateString();
 }
 
-function isToday(date) {
-	const today = new Date();
-	return (
-		date.getDate() === today.getDate() &&
-		date.getMonth() === today.getMonth() &&
-		date.getFullYear() === today.getFullYear()
-	);
+// Helper: get YYYY-MM-DD string in local timezone (what user actually sees as "today")
+function getTodayString(): string {
+	const now = new Date();
+	return now.toISOString().split("T")[0]; // "2026-01-29"
+	// OR more explicit local:
+	// return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+}
+
+function isToday(dateStr: string): boolean {
+	return dateStr === getTodayString();
 }
 
 function getDaysInMonth(year, month) {
@@ -114,6 +117,14 @@ function getDaysInMonth(year, month) {
 }
 
 const LOCAL_STORAGE_KEY = "wsw_events";
+
+interface User {
+	id: String;
+	name: string;
+	email: string;
+	password?: string;
+	terms?: boolean;
+}
 
 export default function AddEvent() {
 	const [events, setEvents] = useState([]);
@@ -137,6 +148,7 @@ export default function AddEvent() {
 	const mapContainerRef = useRef(null);
 	const markerRef = useRef(null);
 	const existingMarkersRef = useRef([]);
+	const { user } = useAuth();
 	const countryList = [
 		"All Countries",
 		...Object.values(countries.getNames("en", { select: "official" })),
@@ -154,22 +166,28 @@ export default function AddEvent() {
 	const parallaxOffset = scrollY * 0.3;
 	const fadeOffset = Math.max(0, 1 - scrollY * 0.001);
 
-	useEffect(() => {
-		const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-		if (stored) {
-			try {
-				setEvents(JSON.parse(stored));
-			} catch (e) {
-				setEvents([]);
-			}
-		} else {
-			setEvents([]);
-		}
-	}, []);
+	// useEffect(() => {
+	// 	const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+	// 	if (stored) {
+	// 		try {
+	// 			setEvents(JSON.parse(stored));
+	// 		} catch (e) {
+	// 			setEvents([]);
+	// 		}
+	// 	} else {
+	// 		setEvents([]);
+	// 	}
+	// }, []);
 
 	useEffect(() => {
 		generateCalendar();
 	}, [currentMonth, currentYear, events]);
+
+	useEffect(() => {
+		if (user?.id) {
+			fetchEventsByUserId();
+		}
+	}, [user]);
 
 	const generateCalendar = () => {
 		const firstDay = new Date(currentYear, currentMonth, 1);
@@ -183,12 +201,12 @@ export default function AddEvent() {
 			const date = new Date(
 				currentYear,
 				currentMonth - 1,
-				prevLastDate - i
+				prevLastDate - i,
 			);
 			days.push({
 				date: date.toISOString().split("T")[0],
 				isCurrentMonth: false,
-				isToday: isToday(date),
+				isToday: isToday(date.toISOString().split("T")[0]),
 				events: getEventsForDate(date, events),
 			});
 		}
@@ -296,7 +314,7 @@ export default function AddEvent() {
 			(field) =>
 				!currentEvent[field] ||
 				(typeof currentEvent[field] === "string" &&
-					currentEvent[field].trim() === "")
+					currentEvent[field].trim() === ""),
 		);
 
 		if (missingFields.length > 0) {
@@ -308,6 +326,7 @@ export default function AddEvent() {
 			const response = await axios.post(
 				`${import.meta.env.VITE_API_URL}/createEvents`,
 				{
+					userId: user.id,
 					publicContactName: currentEvent.publicContactName,
 					publicEmail: currentEvent.publicEmail,
 					publicPhone: currentEvent.publicPhone,
@@ -336,13 +355,13 @@ export default function AddEvent() {
 				},
 				{
 					headers: { "Content-Type": "application/json" },
-				}
+				},
 			);
 
 			if (!response.data.event) {
 				console.error("Invalid response format: 'event' field missing");
 				toast.error(
-					"Failed to create event: Invalid response from server"
+					"Failed to create event: Invalid response from server",
 				);
 				return;
 			}
@@ -389,7 +408,7 @@ export default function AddEvent() {
 				// Save to localStorage
 				localStorage.setItem(
 					LOCAL_STORAGE_KEY,
-					JSON.stringify(updatedEvents)
+					JSON.stringify(updatedEvents),
 				);
 				return updatedEvents;
 			});
@@ -401,8 +420,60 @@ export default function AddEvent() {
 		} catch (err) {
 			console.error("Error:", err.response?.data || err.message);
 			toast.error(
-				err.response?.data?.message || "Failed to create event"
+				err.response?.data?.message || "Failed to create event",
 			);
+		}
+	};
+
+	const fetchEventsByUserId = async () => {
+		if (!user?.id) return;
+
+		try {
+			const res = await axios.get(
+				`${import.meta.env.VITE_API_URL}/event/user/${user.id}`,
+				{ withCredentials: true },
+			);
+
+			console.log("Raw events from backend:", res.data.events);
+
+			// Normalize to the flat shape your UI expects
+			const normalizedEvents = res.data.events.map((raw: any) => ({
+				id: raw._id,
+				publicContactName: raw.contact?.publicContactName || "",
+				publicEmail: raw.contact?.publicEmail || "",
+				publicPhone: raw.contact?.publicPhone || "",
+				organizationName: raw.organization?.organizationName || "",
+				eventWebAddress: raw.eventInfo?.eventWebAddress || "",
+				year: raw.eventInfo?.year || "",
+				eventType: raw.eventInfo?.eventType || "Public Event",
+				startEndType: raw.eventInfo?.startEndType || "",
+				physicalEvent: raw.eventInfo?.physicalEvent ?? true,
+				country: raw.location?.country || "",
+				stateProvince: raw.location?.stateProvince || "",
+				city: raw.location?.city || "",
+				address:
+					raw.location?.address?.streetAddress ||
+					raw.location?.address ||
+					"",
+				locationName: raw.location?.locationName || "",
+				latitude: raw.location?.latitude || null,
+				longitude: raw.location?.longitude || null,
+				startDate: raw.date?.startDate || "",
+				endDate: raw.date?.endDate || "",
+				startTime: raw.date?.startTime || "09:00",
+				endTime: raw.date?.endTime || "17:00",
+				eventTitle: raw.details?.eventTitle || "",
+				eventColor: raw.details?.eventColor || "bg-blue-500",
+				eventDescription: raw.details?.eventDescription || "",
+				expectedAttendance: raw.details?.expectedAttendance || "",
+				promotionalImage: raw.promotionalImage || null,
+			}));
+
+			console.log("Normalized events:", normalizedEvents);
+			setEvents(normalizedEvents);
+		} catch (err) {
+			console.error("Failed to fetch user events:", err);
+			toast.error("Could not load your events");
 		}
 	};
 
@@ -500,27 +571,27 @@ export default function AddEvent() {
 						"organizationName",
 						"eventType",
 						"startEndType",
-				  ]
+					]
 				: formStep === 1
-				? [
-						currentEvent.physicalEvent ? "country" : null,
-						currentEvent.physicalEvent ? "stateProvince" : null,
-						currentEvent.physicalEvent ? "city" : null,
-						currentEvent.physicalEvent ? "address" : null,
-						"locationName",
-				  ].filter(Boolean)
-				: [
-						"startDate",
-						"endDate",
-						"eventTitle",
-						"eventDescription",
-						"expectedAttendance",
-				  ];
+					? [
+							currentEvent.physicalEvent ? "country" : null,
+							currentEvent.physicalEvent ? "stateProvince" : null,
+							currentEvent.physicalEvent ? "city" : null,
+							currentEvent.physicalEvent ? "address" : null,
+							"locationName",
+						].filter(Boolean)
+					: [
+							"startDate",
+							"endDate",
+							"eventTitle",
+							"eventDescription",
+							"expectedAttendance",
+						];
 		const missingFields = requiredFields.filter(
 			(field) =>
 				!currentEvent[field] ||
 				(typeof currentEvent[field] === "string" &&
-					currentEvent[field].trim() === "")
+					currentEvent[field].trim() === ""),
 		);
 		if (missingFields.length > 0) {
 			toast.error("Please fill in all required fields before proceeding");
@@ -549,21 +620,21 @@ export default function AddEvent() {
 			});
 
 			L.Icon.Default.mergeOptions({
-  iconUrl: iconUrl as unknown as string,
-  iconRetinaUrl: iconRetinaUrl as unknown as string,
-  shadowUrl: iconShadowUrl as unknown as string,
-});
+				iconUrl: iconUrl as unknown as string,
+				iconRetinaUrl: iconRetinaUrl as unknown as string,
+				shadowUrl: iconShadowUrl as unknown as string,
+			});
 
 			L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxZoom: 18,
-  attribution:
-    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-}).addTo(mapRef.current);
+				maxZoom: 18,
+				attribution:
+					'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+			}).addTo(mapRef.current);
 
 			// Custom pin icon matching screenshot (blue pin with white center)
 			const pinIcon = L.divIcon({
 				className: "wsw-pin-icon",
-				
+
 				iconSize: [36, 48],
 				iconAnchor: [18, 28], // tip of the pin
 				popupAnchor: [0, -42],
@@ -612,9 +683,9 @@ export default function AddEvent() {
 				popupAnchor: [0, -42],
 			});
 
-			markerRef.current = L.marker([lat, lng], { icon: pinIcon })
-				.addTo(mapRef.current)
-				
+			markerRef.current = L.marker([lat, lng], { icon: pinIcon }).addTo(
+				mapRef.current,
+			);
 		}
 
 		return () => {
@@ -1140,7 +1211,7 @@ export default function AddEvent() {
 													className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 cursor-pointer"
 													onClick={() =>
 														setShowStartPicker(
-															!showStartPicker
+															!showStartPicker,
 														)
 													}
 												/>
@@ -1153,7 +1224,7 @@ export default function AddEvent() {
 													}
 													onClick={() =>
 														setShowStartPicker(
-															!showStartPicker
+															!showStartPicker,
 														)
 													}
 													readOnly
@@ -1168,14 +1239,14 @@ export default function AddEvent() {
 															selected={
 																currentEvent.startDate
 																	? new Date(
-																			currentEvent.startDate
-																	  )
+																			currentEvent.startDate,
+																		)
 																	: undefined
 															}
 															onSelect={(date) =>
 																handleDateSelect(
 																	date,
-																	"startDate"
+																	"startDate",
 																)
 															}
 															disabled={(date) =>
@@ -1226,7 +1297,7 @@ export default function AddEvent() {
 																>
 																	{time}
 																</SelectItem>
-															)
+															),
 														)}
 													</SelectContent>
 												</Select>
@@ -1244,7 +1315,7 @@ export default function AddEvent() {
 													className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 cursor-pointer"
 													onClick={() =>
 														setShowEndPicker(
-															!showEndPicker
+															!showEndPicker,
 														)
 													}
 												/>
@@ -1255,7 +1326,7 @@ export default function AddEvent() {
 													value={currentEvent.endDate}
 													onClick={() =>
 														setShowEndPicker(
-															!showEndPicker
+															!showEndPicker,
 														)
 													}
 													readOnly
@@ -1270,21 +1341,21 @@ export default function AddEvent() {
 															selected={
 																currentEvent.endDate
 																	? new Date(
-																			currentEvent.endDate
-																	  )
+																			currentEvent.endDate,
+																		)
 																	: undefined
 															}
 															onSelect={(date) =>
 																handleDateSelect(
 																	date,
-																	"endDate"
+																	"endDate",
 																)
 															}
 															disabled={(date) =>
 																date <
 																new Date(
 																	currentEvent.startDate ||
-																		new Date()
+																		new Date(),
 																)
 															}
 															className="p-4"
@@ -1329,7 +1400,7 @@ export default function AddEvent() {
 																>
 																	{time}
 																</SelectItem>
-															)
+															),
 														)}
 													</SelectContent>
 												</Select>
@@ -1438,7 +1509,7 @@ export default function AddEvent() {
 														onClick={() =>
 															document
 																.getElementById(
-																	"promotionalImage"
+																	"promotionalImage",
 																)
 																.click()
 														}
@@ -1618,7 +1689,7 @@ export default function AddEvent() {
 													className={`${
 														event.eventColor ||
 														getEventColor(
-															event.eventType
+															event.eventType,
 														)
 													} text-white text-[10px] sm:text-xs rounded px-1 py-0.5`}
 												>
@@ -1689,7 +1760,7 @@ export default function AddEvent() {
 														className={`w-2 sm:w-3 h-2 sm:h-3 rounded-full mr-2 ${
 															event.eventColor ||
 															getEventColor(
-																event.eventType
+																event.eventType,
 															)
 														}`}
 													></div>
@@ -1725,7 +1796,7 @@ export default function AddEvent() {
 						</Dialog>
 					</div>
 					<div className="mb-8">
-						<div className="flex flex-col sm:flex-row justify-between items-center mb-4">
+						{/* <div className="flex flex-col sm:flex-row justify-between items-center mb-4">
 							<h2 className="text-lg sm:text-xl font-semibold text-black">
 								All Events
 							</h2>
@@ -1735,8 +1806,8 @@ export default function AddEvent() {
 							>
 								Show All Events
 							</Link>
-						</div>
-						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+						</div> */}
+						{/* <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
 							{events.length === 0 && (
 								<div className="bg-[#220536] col-span-1 sm:col-span-2 lg:col-span-3 backdrop-blur-md rounded-lg shadow p-6 text-center border border-white/20">
 									<Calendar className="w-10 sm:w-12 text-slate-300 mx-auto mb-2" />
@@ -1807,7 +1878,7 @@ export default function AddEvent() {
 									</div>
 								</div>
 							))}
-						</div>
+						</div> */}
 					</div>
 				</div>
 			</section>
@@ -1830,7 +1901,7 @@ export default function AddEvent() {
 										className={`inline-block px-2 py-0.5 rounded text-xs sm:text-sm ${
 											detailsEvent.eventColor ||
 											getEventColor(
-												detailsEvent.eventType
+												detailsEvent.eventType,
 											)
 										}`}
 									>
@@ -1924,7 +1995,7 @@ export default function AddEvent() {
 														<div className="text-slate-7 text-sm sm:text-base">
 															<span>
 																{formatDate(
-																	detailsEvent.startDate
+																	detailsEvent.startDate,
 																)}
 															</span>
 															{detailsEvent.startTime && (
@@ -1938,7 +2009,7 @@ export default function AddEvent() {
 															<span> - </span>
 															<span>
 																{formatDate(
-																	detailsEvent.endDate
+																	detailsEvent.endDate,
 																)}
 															</span>
 															{detailsEvent.endTime && (

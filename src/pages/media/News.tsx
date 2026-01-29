@@ -22,9 +22,9 @@ const News = () => {
 			title: "World Space Week 2025 Theme Announced", 
 			excerpt:
 				"The 2025 theme 'Space and Climate Change' will explore how space technology helps address environmental challenges.",
-			author: "WSW Association",
+			author: "News",
 			date: "June 20, 2024",
-			category: "Announcement",
+			// category: "Announcement",
 			readTime: "3 min read",
 			image: "https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=600&h=400&fit=crop",
 		},
@@ -33,9 +33,9 @@ const News = () => {
 			title: "Record Breaking Participation in WSW 2024",
 			excerpt:
 				"Over 6,000 events across 95 countries celebrated World Space Week 2024, making it the largest celebration yet.",
-			author: "Media Team",
+			author: "News",
 			date: "November 15, 2024",
-			category: "Report",
+			// category: "Report",
 			readTime: "5 min read",
 			image: "https://images.unsplash.com/photo-1581833971358-2c8b550f87b3?w=600&h=400&fit=crop",
 		},
@@ -44,9 +44,9 @@ const News = () => {
 			title: "New Educational Resources Released",
 			excerpt:
 				"Comprehensive teaching materials for the 2025 theme are now available for educators worldwide.",
-			author: "Education Committee",
+			author: "News",
 			date: "May 28, 2024",
-			category: "Education",
+			// category: "Education",
 			readTime: "2 min read",
 			image: "https://images.unsplash.com/photo-1614728263952-84ea256f9679?w=600&h=400&fit=crop",
 		},
@@ -55,9 +55,9 @@ const News = () => {
 			title: "Partnership with International Space Agencies",
 			excerpt:
 				"WSW Association announces new collaborations with major space agencies to enhance educational outreach.",
-			author: "Partnership Team",
+			author: "News",
 			date: "May 10, 2024",
-			category: "Partnership",
+			// category: "Partnership",
 			readTime: "4 min read",
 			image: "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?w=600&h=400&fit=crop",
 		},
@@ -107,19 +107,19 @@ const News = () => {
 									alt={featuredNews.title}
 									className="w-full h-64 lg:h-full object-cover"
 								/>
-								<div className="absolute top-4 left-4">
+								{/* <div className="absolute top-4 left-4">
 									<span className="bg-[#9326E0] text-white px-3 py-1 rounded-full text-sm font-medium">
 										Featured
 									</span>
-								</div>
+								</div> */}
 							</div>
 							<div className="p-8 lg:p-12 flex flex-col justify-center">
 								<div className="flex items-center gap-2 mb-4">
-									<span className="bg-[#9326E0]/20 text-[#9326E0] px-3 py-1 rounded-full text-sm font-medium">
+									{/* <span className="bg-[#9326E0]/20 text-[#9326E0] px-3 py-1 rounded-full text-sm font-medium">
 										{featuredNews.category}
-									</span>
+									</span> */}
 									<span className="text-gray-400 text-sm">
-										•
+										<Clock className="w-4 h-4 text-[#8c38c7]" />
 									</span>
 									<span className="text-gray-400 text-sm">
 										{featuredNews.readTime}
@@ -172,9 +172,9 @@ const News = () => {
 										className="w-full h-48 object-cover"
 									/>
 									<div className="absolute top-4 left-4">
-										<span className="bg-black/70 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-medium">
+										{/* <span className="bg-black/70 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-medium">
 											{article.category}
-										</span>
+										</span> */}
 									</div>
 								</div>
 

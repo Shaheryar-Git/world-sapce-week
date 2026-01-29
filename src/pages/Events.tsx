@@ -278,47 +278,67 @@ const Events = () => {
             >
               Explore a rich tapestry of space events spanning the globe! Click a year to view events for that year.
             </motion.p>
-            <Card className="bg-white/10 border-none rounded-xl overflow-hidden">
-              <CardContent className="p-0">
-                <div className="overflow-x-auto max-h-[450px] overflow-y-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-600 bg-white/5">
-                        <th className="text-center py-4 px-6 font-semibold text-white">Years</th>
-                        <th className="text-center py-4 px-6 font-semibold text-white">Mapped Events</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-center">
-                      <AnimatePresence>
-                        {years.map((year, index) => (
-                          <motion.tr
-                            key={year}
-                            className="border-b border-gray-700 hover:bg-white/15 duration-300"
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 20 }}
-                            transition={{ duration: 0.5, delay: index * 0.05 }}
-                          >
-                            <td className="py-4 px-6">
-                              <motion.div
-                                className="font-semibold cursor-pointer hover:text-[#170324] hover:underline text-white duration-300"
-                                onClick={() => handleYearSubmit(year)}
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                              >
-                                {loading && year === years[index] ? "Loading..." : year}
-                                
-                              </motion.div>
-                            </td>
-                            <td onClick={() => handleMappedEvents(year, true)} className="py-4 px-6 text-gray-200">Physical Events of {year}</td>
-                          </motion.tr>
-                        ))}
-                      </AnimatePresence>
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+            {/* YEARS & MAPPED EVENTS */}
+<section className="py-20 bg-[#1b0833]">
+  <div className="container mx-auto px-6">
+    <h2 className="text-4xl font-bold text-center mb-12">
+      Events Timeline Overview
+    </h2>
+
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+      
+      {/* LEFT COLUMN — YEARS */}
+      <div className="bg-white/10 backdrop-blur rounded-2xl p-8 border border-white/20">
+        <h3 className="text-2xl font-semibold mb-6 text-center">
+          Events by Year
+        </h3>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-h-[420px] overflow-y-auto">
+          {years.map((year) => (
+            <motion.div
+              key={year}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => handleYearSubmit(year)}
+              className="cursor-pointer bg-[#9326E0]/30 hover:bg-[#9326E0]/50 rounded-xl p-4 text-center transition"
+            >
+              <p className="text-xl font-bold">{year}</p>
+              <p className="text-xs text-gray-200 mt-1">View Events</p>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+
+      {/* RIGHT COLUMN — MAPPED EVENTS */}
+      <div className="bg-white/10 backdrop-blur rounded-2xl p-8 border border-white/20">
+        <h3 className="text-2xl font-semibold mb-6 text-center">
+          Mapped Events
+        </h3>
+
+        <div className="space-y-4 max-h-[420px] overflow-y-auto">
+          {years.map((year) => (
+            <motion.div
+              key={year}
+              whileHover={{ scale: 1.03 }}
+              className="flex items-center justify-between bg-[#170324]/60 hover:bg-[#170324]/80 p-4 rounded-xl transition"
+            >
+              <span className="font-semibold">{year}</span>
+
+              <button
+                onClick={() => handleMappedEvents(year, true)}
+                className="px-4 py-2 rounded-lg bg-[#9326E0] hover:bg-[#7b1fa2] text-sm font-semibold transition"
+              >
+                View on Map
+              </button>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
           </motion.div>
 
           <motion.div

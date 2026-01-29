@@ -12,9 +12,9 @@ const Index = () => {
     <div className="min-h-screen mt-4">
       <Navigation />
       <Hero />
-      <FeaturedEvents />
+      {/* <FeaturedEvents /> */}
       {/* <EventMap/> */}
-      <h1 className="text-center text-5xl font-bold text-gray-900 mb-6">Global Events</h1>
+      <h1 className="text-center text-5xl font-bold text-gray-900 mb-10 mt-10">Global Events</h1>
       <MapComponent/>
       <EventsCallToAction />
       <FeaturedSponsors />

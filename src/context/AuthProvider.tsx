@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import Cookies from "js-cookie";
 
 interface User {
+	id:String;
 	name: string;
 	email: string;
 	password?: string;
@@ -16,7 +17,7 @@ type UserResponse = {
 
 interface AuthContextType {
 	user: User | null;
-	login: (email: string, password: string) => Promise<boolean>;
+	login: (id: String, email: string, password: string) => Promise<boolean>;
 	signup: (
 		name: string,
 		email: string,

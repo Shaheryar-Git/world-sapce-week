@@ -61,6 +61,7 @@ import News from "./pages/media/News";
 import Workshops from "./pages/media/Workshops";
 import ScrollToTop from "./components/ScrollToTop";
 import BecomeNationalCoordinators from "./pages/about-wsw/BecomeNationalCoordinators";
+import CoordinatorDetails  from "./pages/about-wsw/CoordinatorDetailsPage";
 import Logos from "./pages/hold-event/Logos";
 import SocialMediaKit from "./pages/hold-event/SocialMediaKit";
 import BrandGuidelines from "./pages/hold-event/Brand-Guidelines";
@@ -87,139 +88,59 @@ const App = () => (
 				<Routes>
 					<Route path="/event-list/:year" element={<EventsList />} />
 					<Route path="/" element={<Index />} />
-					<Route
-						path="/nationalcoordinatorform"
-						element={<NationalCoordinatorForm />}
-					/>
+					<Route path="/nationalcoordinatorform" element={<NationalCoordinatorForm />}/>
 					<Route path="/nation/:nationId" element={<Nation />} />
 					<Route path="/event/:eventId" element={<EventDetails />} />
-					<Route
-						path="/event/mappedEvents"
-						element={<MappedEvents />}
-					/>
+					<Route path="/event/mappedEvents" element={<MappedEvents />} />
 
 					{/*///  */}
 					{/* About WSW Association Routes */}
 					<Route path="/about-association" element={<About />} />
-					<Route
-						path="/about-association/mission"
-						element={<Mission />}
-					/>
+					<Route path="/about-association/mission" element={<Mission />}/>
 					{/* <Route path="/about-association/leadership"element={<Leadership />}  /> */}
-					<Route
-						path="/about-association/leadership/honorary-chair"
-						element={<HonoraryChair />}
-					/>
-					<Route
-						path="/about-association/leadership/Board-Directors"
-						element={<BoardDirectors />}
-					/>
-					<Route
-						path="/about-association/leadership/Board-Advisors"
-						element={<BoardAdvisors />}
-					/>
-					<Route
-						path="/about-association/leadership/Officers-Staff"
-						element={<OfficersStaff />}
-					/>
-					<Route
-						path="/about-association/sponsors-list"
-						element={<SponsorsList />}
-					/>
-					<Route
-						path="/about-association/Become-Sponsor"
-						element={<BecomeSponsor />}
-					/>
-					<Route
-						path="/about-association/Donate"
-						element={<Donate />}
-					/>
-					<Route
-						path="/about-association/partners"
-						element={<Partners />}
-					/>
-					<Route
-						path="/about-association/partner-list"
-						element={<PartnerList />}
-					/>
-					<Route
-						path="/about-association/positions"
-						element={<Positions />}
-					/>
+					<Route path="/about-association/leadership/honorary-chair" element={<HonoraryChair />}/>
+					<Route path="/about-association/leadership/Board-Directors" element={<BoardDirectors />}/>
+					<Route path="/about-association/leadership/Board-Advisors" element={<BoardAdvisors />}/>
+					<Route path="/about-association/leadership/Officers-Staff" element={<OfficersStaff />}/>
+					<Route path="/about-association/sponsors-list" element={<SponsorsList />}/>
+					<Route path="/about-association/Become-Sponsor" element={<BecomeSponsor />}/>
+					<Route path="/about-association/Donate" element={<Donate />}/>
+					<Route path="/about-association/partners" element={<Partners />}/>
+					<Route path="/about-association/partner-list" element={<PartnerList />}/>
+					<Route path="/about-association/positions" element={<Positions />}/>
 
 					{/* About WSW Routes */}
 					<Route path="/about-wsw" element={<AboutWSW />} />
-					<Route
-						path="/about-wsw/what-is-wsw"
-						element={<WhatIsWSW />}
-					/>
-					<Route
-						path="/about-wsw/un-declaration"
-						element={<UNDeclaration />}
-					/>
-					<Route
-						path="/about-wsw/knowledge-hub"
-						element={<KnowledgeHub />}
-					/>
-					<Route
-						path="/about-wsw/Hold-Event"
-						element={<HoldEvent />}
-					/>
-					<Route
-						path="/about-wsw/event-ideas"
-						element={<EventIdeas />}
-					/>
-					<Route
-						path="/about-wsw/educational-resources"
-						element={<EducationalResources />}
-					/>
-					<Route
-						path="/about-wsw/coordinators"
-						element={<Coordinators />}
-					/>
-					<Route
-						path="/about-wsw/Become-National-Coordinators"
-						element={<BecomeNationalCoordinators />}
-					/>
+					<Route path="/about-wsw/what-is-wsw" element={<WhatIsWSW />}/>
+					<Route path="/about-wsw/un-declaration"	element={<UNDeclaration />}/>
+					<Route path="/about-wsw/knowledge-hub" element={<KnowledgeHub />}/>
+					<Route path="/about-wsw/Hold-Event" element={<HoldEvent />}/>
+					<Route path="/about-wsw/event-ideas" element={<EventIdeas />}/>
+					<Route path="/about-wsw/educational-resources" element={<EducationalResources />}/>
+					<Route path="/about-wsw/coordinators" element={<Coordinators />}/>
+					<Route path="/about-wsw/coordinators/:id" element={<CoordinatorDetails />}/>
+					<Route path="/about-wsw/Become-National-Coordinators" element={<BecomeNationalCoordinators />}/>
 					<Route path="/about-wsw/history" element={<History />} />
-					<Route
-						path="/about-wsw/Past-Theme-Reports-Posters"
-						element={<PastReportsPosters />}
-					/>
+					<Route path="/about-wsw/Past-Theme-Reports-Posters" element={<PastReportsPosters />}/>
 
 					{/* Hold Event Routes */}
 					<Route path="/hold-event" element={<HoldEvent />} />
 					<Route path="/hold-event/theme" element={<Theme />} />
 					<Route path="/hold-event/poster" element={<Poster />} />
-					<Route
-						path="/hold-event/guidelines"
-						element={<Guidelines />}
-					/>
+					<Route path="/hold-event/guidelines" element={<Guidelines />}/>
 					<Route path="/hold-event/manage" element={<Manage />} />
-					<Route
-						path="/hold-event/media-kit"
-						element={<MediaKit />}
-					/>
-					<Route
-						path="/hold-event/media-kit/logos"
-						element={<Logos />}
-					/>
-					<Route
-						path="/hold-event/media-kit/social-media-kit"
-						element={<SocialMediaKit />}
-					/>
-					<Route
-						path="/hold-event/media-kit/brand-guideliness"
-						element={<BrandGuidelines />}
-					/>
+					<Route path="/hold-event/media-kit" element={<MediaKit />}/>
+					<Route path="/hold-event/media-kit/logos" element={<Logos />}/>
+					<Route path="/hold-event/media-kit/social-media-kit" element={<SocialMediaKit />}/>
+					<Route path="/hold-event/media-kit/brand-guideliness" element={<BrandGuidelines />}/>
 
 					{/* Events Routes */}
 					<Route path="/events" element={<Events />} />
-<Route path="/events/add" element={<AddEvent />} />
+                    {/* <Route path="/events/add" element={<AddEvent />} /> */}
 					{/* ProtectedRoute */}
-					{/* <Route element={<ProtectedRoutes />}>
-						
-					</Route> */}
+					<Route element={<ProtectedRoutes />}>
+						<Route path="/events/add" element={<AddEvent />} />
+					</Route>
 					<Route path="/events/all" element={<AllEvents />} />
 					<Route path="/events/highlights" element={<Highlights />} />
 					<Route path="/events/map" element={<Map />} />
@@ -238,10 +159,7 @@ const App = () => (
 					<Route path="/become-partner" element={<BecomePartner />} />
 					<Route path="/login" element={<Login />} />
 					<Route path="/signup" element={<Signup />} />
-					<Route
-						path="/forgot-password"
-						element={<ForgotPassword />}
-					/>
+					<Route path="/forgot-password" element={<ForgotPassword />} />
 					{/* Route To be Authorized */}
 					<Route path="/otppage" element={<OtpPage />} />
 					{/* / / */}
