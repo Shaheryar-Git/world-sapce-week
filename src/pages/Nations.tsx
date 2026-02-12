@@ -5,6 +5,7 @@ import CoordinatorInfo from "@/pages/CoordinatorInfo";
 import InquiryForm from "@/pages/InquiryForm";
 import Footer from "@/components/Footer";
 import Navigation from "@/components/Navigation";
+import moment from "moment";
 
 interface Event {
   location: {
@@ -23,6 +24,12 @@ interface Event {
     startDate: string;
     endDate: string;
   };
+  eventInfo:{
+	eventType: string;
+	startEndType: string;
+	physicalEvent: boolean;
+	year: number;
+  }
 }
 
 const Nation = () => {
@@ -32,34 +39,50 @@ const Nation = () => {
   const [coordinators, setCoordinators] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showAllEvents, setShowAllEvents] = useState(false);
+
+  const visibleEvents = showAllEvents ? events : events.slice(0, 4);
+
 
   // Fetch events if not provided in location.state
-  useEffect(() => {
-    const fetchEvents = async () => {
-      if (events.length > 0) {
-        setLoading(false);
-        return; // Skip fetch if events are already provided
-      }
-      try {
-        setLoading(true);
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/events/${countryName}`);
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.message || "Failed to fetch events");
-        }
-        setEvents(data?.data?.events || []);
-        setCoordinators(data?.data?.coordinator);
-        setError(null);
-      } catch (err) {
-        setError(err.message || "Error fetching events");
-        setEvents([]);
-      } finally {
-        setLoading(false);
-      }
-    };
+ useEffect(() => {
+  const fetchEvents = async () => {
+    if (events.length > 0) {
+      setLoading(false);
+      return;
+    }
 
-    fetchEvents();
-  }, [countryName, events.length]);
+    try {
+      setLoading(true);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/events/${countryName}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to fetch events");
+      }
+
+      const fetchedEvents = data?.data?.events || [];
+
+      // Sort events by year DESCENDING (2026 → 2025 → 2024 ...)
+      const sortedEvents = [...fetchedEvents].sort((a, b) => {
+        const yearA = a.eventInfo?.year || 0;
+        const yearB = b.eventInfo?.year || 0;
+        return yearB - yearA; // descending: bigger year first
+      });
+
+      setEvents(sortedEvents);
+      setCoordinators(data?.data?.coordinator || []);
+      setError(null);
+    } catch (err) {
+      setError(err.message || "Error fetching events");
+      setEvents([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchEvents();
+}, [countryName, events.length]);
 
   // Remove Leaflet attribution (if using Leaflet in MapSection)
   useEffect(() => {
@@ -68,60 +91,120 @@ const Nation = () => {
   }, []);
 
   const EventsSection = () => (
-    <div className="mt-6 sm:mt-8">
-      <h1 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">Events in {countryName}</h1>
-      {loading ? (
-        <p className="text-gray-600 text-sm sm:text-base">Loading events...</p>
-      ) : error ? (
-        <p className="text-red-500 text-sm sm:text-base">{error}</p>
-      ) : events.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white border border-gray-200 rounded-lg shadow-md">
-            <thead className="bg-gray-100 hidden sm:table-header-group">
-              <tr>
-                <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-700 border-b">Event Title</th>
-                <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-700 border-b">Description</th>
-                <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-700 border-b">City</th>
-                <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-700 border-b">Location</th>
-                <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-700 border-b">Attendance</th>
-                <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-700 border-b">Date</th>
+  <div className="mt-8 sm:mt-10">
+    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">
+      Events in <span className="text-[#9326E0]">{countryName}</span>
+    </h1>
+
+    {loading ? (
+      <p className="text-gray-600 text-base font-medium text-center py-8">
+        Loading events...
+      </p>
+    ) : error ? (
+      <p className="text-red-600 text-base font-medium text-center py-8">{error}</p>
+    ) : events.length > 0 ? (
+      <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+        <table className="min-w-full bg-white divide-y divide-gray-200">
+          {/* Table Header */}
+          <thead className="bg-gradient-to-r from-[#9326E0]/10 to-[#204d74]/10">
+            <tr className="hidden sm:table-row">
+              <th className="px-4 py-4 text-left text-sm font-semibold text-gray-800">
+                Event Title
+              </th>
+              <th className="px-4 py-4 text-left text-sm font-semibold text-gray-800">
+                Description
+              </th>
+              <th className="px-4 py-4 text-left text-sm font-semibold text-gray-800">
+                City
+              </th>
+              <th className="px-4 py-4 text-left text-sm font-semibold text-gray-800">
+                Location
+              </th>
+              <th className="px-4 py-4 text-left text-sm font-semibold text-gray-800">
+                Attendance
+              </th>
+              <th className="px-4 py-4 text-left text-sm font-semibold text-gray-800">
+                Year
+              </th>
+            </tr>
+          </thead>
+
+          {/* Table Body */}
+          <tbody className="divide-y divide-gray-100">
+            {visibleEvents.map((event, index) => (
+              <tr
+                key={index}
+                className={`hover:bg-[#9326E0]/5 transition-colors duration-200 flex flex-col sm:table-row ${
+                  index % 2 === 0 ? "bg-gray-50" : "bg-white"
+                }`}
+              >
+                {/* Title */}
+                <td className="px-4 py-4 text-sm text-gray-900 font-medium flex sm:table-cell">
+                  <span className="font-bold sm:hidden mr-2">Title:</span>
+                  {event.details.eventTitle}
+                </td>
+
+                {/* Description */}
+                <td className="px-4 py-4 text-sm text-gray-600 flex sm:table-cell">
+                  <span className="font-bold sm:hidden mr-2">Description:</span>
+                  {event.details.eventDescription?.substring(0, 120)}
+                  {event.details.eventDescription?.length > 120 ? "..." : ""}
+                </td>
+
+                {/* City */}
+                <td className="px-4 py-4 text-sm text-gray-700 flex sm:table-cell">
+                  <span className="font-bold sm:hidden mr-2">City:</span>
+                  {event.location.city || "—"}
+                </td>
+
+                {/* Location */}
+                <td className="px-4 py-4 text-sm text-gray-700 flex sm:table-cell">
+                  <span className="font-bold sm:hidden mr-2">Location:</span>
+                  {event.location.locationName || "—"}
+                </td>
+
+                {/* Attendance */}
+                <td className="px-4 py-4 text-sm text-gray-700 flex sm:table-cell">
+                  <span className="font-bold sm:hidden mr-2">Attendance:</span>
+                  {event.details.expectedAttendance?.toLocaleString() || "—"}
+                </td>
+
+                {/* Year */}
+                <td className="px-4 py-4 text-sm font-medium text-[#9326E0] flex sm:table-cell">
+                  <span className="font-bold sm:hidden mr-2">Year:</span>
+                  {event.eventInfo?.year || "—"}
+				  {/* {moment(event.eventInfo?.year).format("MMMM DD, YYYY")} */}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {events.map((event, index) => (
-                <tr
-                  key={index}
-                  className={`border-b ${index % 2 === 0 ? "bg-gray-50" : "bg-white"} hover:bg-gray-100 transition-colors flex flex-col sm:table-row`}
-                >
-                  <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-800 flex sm:table-cell">
-                    <span className="font-semibold sm:hidden">Title: </span>{event.details.eventTitle}
-                  </td>
-                  <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-600 flex sm:table-cell">
-                    <span className="font-semibold sm:hidden">Description: </span>{event.details.eventDescription}
-                  </td>
-                  <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-600 flex sm:table-cell">
-                    <span className="font-semibold sm:hidden">City: </span>{event.location.city}
-                  </td>
-                  <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-600 flex sm:table-cell">
-                    <span className="font-semibold sm:hidden">Location: </span>{event.location.locationName}
-                  </td>
-                  <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-600 flex sm:table-cell">
-                    <span className="font-semibold sm:hidden">Attendance: </span>{event.details.expectedAttendance}
-                  </td>
-                  <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-600 flex sm:table-cell">
-                    <span className="font-semibold sm:hidden">Date: </span>
-                    {event.date.startDate} to {event.date.endDate}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <p className="text-gray-600 text-sm sm:text-base">No events found for {countryName}</p>
-      )}
-    </div>
-  );
+            ))}
+          </tbody>
+        </table>
+
+        {/* See More Button */}
+        {events.length > 4 && !showAllEvents && (
+          <div className="text-center mt-8">
+            <button
+              onClick={() => setShowAllEvents(true)}
+              className="inline-flex items-center gap-2 px-8 py-3.5 bg-[#9326E0] text-white font-semibold rounded-lg shadow-md hover:bg-[#7e1ed9] hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5"
+            >
+              See More Events
+             
+            </button>
+          </div>
+        )}
+      </div>
+    ) : (
+      <div className="text-center py-12 bg-gray-50 rounded-xl border border-gray-200">
+        <p className="text-gray-700 text-lg font-medium">
+          No events found for {countryName}
+        </p>
+        <p className="text-gray-500 mt-2 text-base">
+          Check back later or explore other countries!
+        </p>
+      </div>
+    )}
+  </div>
+);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -133,7 +216,7 @@ const Nation = () => {
             <EventsSection />
           </div>
           <div className="space-y-8 sm:space-y-8">
-            {/* <CoordinatorInfo coordinators={coordinators} /> */}
+            <CoordinatorInfo coordinators={coordinators} />
             <InquiryForm />
           </div>
         </div>

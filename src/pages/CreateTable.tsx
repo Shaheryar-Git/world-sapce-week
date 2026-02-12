@@ -14,7 +14,7 @@ const CreateTable = () => {
 		console.log("Submitting User:", { name, email, age });
 		await axios.post(`${import.meta.env.VITE_API_URL}/createUser`, {
 				name,
-email,
+				email,
 				age,
 			})
 			.then((result) => {

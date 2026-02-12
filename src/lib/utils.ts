@@ -91,3 +91,5 @@ export function validateForm(event: EventType) {
         (event[field as keyof EventType] as string).trim() !== "")
   );
 }
+
+

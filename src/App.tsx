@@ -43,6 +43,7 @@ import EducationalResources from "./pages/about-wsw/EducationalResources";
 import Coordinators from "./pages/about-wsw/Coordinators";
 import History from "./pages/about-wsw/History";
 import PastReportsPosters from "./pages/about-wsw/PastReportsPosters";
+import ThemeDetails from "./pages/about-wsw/ThemeDetails";
 
 // Hold Event pages
 import Theme from "./pages/hold-event/Theme";
@@ -122,6 +123,7 @@ const App = () => (
 					<Route path="/about-wsw/Become-National-Coordinators" element={<BecomeNationalCoordinators />}/>
 					<Route path="/about-wsw/history" element={<History />} />
 					<Route path="/about-wsw/Past-Theme-Reports-Posters" element={<PastReportsPosters />}/>
+					<Route path="/about-wsw/Past-Theme-Reports-Posters/:id" element={<ThemeDetails />} />
 
 					{/* Hold Event Routes */}
 					<Route path="/hold-event" element={<HoldEvent />} />
@@ -138,9 +140,7 @@ const App = () => (
 					<Route path="/events" element={<Events />} />
                     {/* <Route path="/events/add" element={<AddEvent />} /> */}
 					{/* ProtectedRoute */}
-					<Route element={<ProtectedRoutes />}>
-						<Route path="/events/add" element={<AddEvent />} />
-					</Route>
+					<Route element={<ProtectedRoutes />}> <Route path="/events/add" element={<AddEvent />} /></Route>
 					<Route path="/events/all" element={<AllEvents />} />
 					<Route path="/events/highlights" element={<Highlights />} />
 					<Route path="/events/map" element={<Map />} />

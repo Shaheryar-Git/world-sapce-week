@@ -286,8 +286,8 @@ const Events = () => {
     </h2>
 
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-      
-      {/* LEFT COLUMN — YEARS */}
+
+      {/* LEFT COLUMN — EVENTS BY YEAR */}
       <div className="bg-white/10 backdrop-blur rounded-2xl p-8 border border-white/20">
         <h3 className="text-2xl font-semibold mb-6 text-center">
           Events by Year
@@ -299,7 +299,7 @@ const Events = () => {
               key={year}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => handleYearSubmit(year)}
+              onClick={() => handleYearSubmit(year)} // ✅ API call unchanged
               className="cursor-pointer bg-[#9326E0]/30 hover:bg-[#9326E0]/50 rounded-xl p-4 text-center transition"
             >
               <p className="text-xl font-bold">{year}</p>
@@ -325,7 +325,7 @@ const Events = () => {
               <span className="font-semibold">{year}</span>
 
               <button
-                onClick={() => handleMappedEvents(year, true)}
+                onClick={() => handleMappedEvents(year, true)} // ✅ API call unchanged
                 className="px-4 py-2 rounded-lg bg-[#9326E0] hover:bg-[#7b1fa2] text-sm font-semibold transition"
               >
                 View on Map
@@ -338,6 +338,7 @@ const Events = () => {
     </div>
   </div>
 </section>
+
 
           </motion.div>
 

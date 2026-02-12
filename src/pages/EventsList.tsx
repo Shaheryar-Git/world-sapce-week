@@ -8,6 +8,9 @@ import axios from "axios";
 import { toast } from "sonner";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import moment from "moment";
+
+
 
 interface Event {
   _id: string;
@@ -57,7 +60,7 @@ const EventsList = () => {
   const [events, setEvents] = useState<Event[]>(state?.events || []);
   const [loading, setLoading] = useState(!state?.events);
   const [currentPage, setCurrentPage] = useState(1);
-  const EVENTS_PER_PAGE = 10; // Number of events per page
+  const EVENTS_PER_PAGE = 25; // Number of events per page
 
   // Calculate total pages
   const totalPages = Math.ceil(events.length / EVENTS_PER_PAGE);
@@ -184,14 +187,14 @@ const EventsList = () => {
                           <th className="text-left py-4 px-6 font-semibold text-white">Event Name</th>
                           <th className="text-left py-4 px-6 font-semibold text-white">Date</th>
                           <th className="text-left py-4 px-6 font-semibold text-white">Event Type</th>
-                          <th className="text-left py-4 px-6 font-semibold text-white">Physical</th>
+                          <th className="text-left py-4 px-6 font-semibold text-white">Virtual</th>
                           <th className="text-left py-4 px-6 font-semibold text-white">Details</th>
                         </tr>
                       </thead>
                       <tbody>
                         {currentEvents.map((event) => (
                           <tr
-                            key={event._id}
+                            // key={index}
                             className="border-b border-gray-700 hover:bg-white/15 transition-colors duration-300"
                           >
                             <td className="py-4 px-6 text-gray-200">{event.location.country || "Not Specified"}</td>
@@ -201,13 +204,13 @@ const EventsList = () => {
                               {event.location.city || "Not Specified"}
                             </td>
                             <td className="py-4 px-6 font-medium text-white">{event.details.eventTitle}</td>
-                            <td className="py-4 px-6 text-gray-200">{event.date.startDate}</td>
+                            <td className="py-4 px-10 text-gray-200">{moment(event.date.startDate).format("MMMM DD, YYYY")}</td>
                             <td className="py-4 px-6 text-gray-200">{event.eventInfo.eventType}</td>
                             <td className="py-4 px-6">
                               {event.eventInfo.physicalEvent ? (
                                 <Badge
                                   variant="secondary"
-                                  className="bg-[#170324]/20 text-[#170324] border-[#170324]/50"
+                                  className="bg-white text-[#170324] border-[#170324]/50"
                                 >
                                   Y
                                 </Badge>

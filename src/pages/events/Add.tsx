@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigationType } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,8 @@ import enLocale from "i18n-iso-countries/langs/en.json";
 import iconUrl from "leaflet/dist/images/marker-icon.png";
 import iconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
 import iconShadowUrl from "leaflet/dist/images/marker-shadow.png";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { NavigationType } from "react-router-dom";
 
 // Fix for Leaflet default marker icon
 L.Icon.Default.mergeOptions({
@@ -69,6 +71,7 @@ const initialEvent = {
 	stateProvince: "",
 	city: "",
 	address: "",
+	streetAddress: "",
 	locationName: "",
 	startDate: getLocalDateString(new Date()),
 	startTime: "09:00",
@@ -149,11 +152,14 @@ export default function AddEvent() {
 	const markerRef = useRef(null);
 	const existingMarkersRef = useRef([]);
 	const { user } = useAuth();
+	const location = useLocation();
 	const countryList = [
 		"All Countries",
 		...Object.values(countries.getNames("en", { select: "official" })),
 	];
 	countries.registerLocale(enLocale);
+	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+	const navigationType = useNavigationType();
 
 	useEffect(() => {
 		const handleScroll = () => {
@@ -179,6 +185,22 @@ export default function AddEvent() {
 	// 	}
 	// }, []);
 
+	
+	useEffect(() => {
+		// Only enter edit mode when we navigated here via a PUSH
+		// (e.g. clicking "Edit Event" in All.tsx), not on page refresh/back.
+		if (navigationType !== "PUSH") return;
+	  
+		const state = location.state as { eventToEdit?: any } | null;
+		if (state?.eventToEdit) {
+		  setEditMode(true);
+		  setSelectedEvent(state.eventToEdit);
+		  setCurrentEvent(state.eventToEdit);
+		  setFormStep(0);
+		}
+	  }, [location.state, navigationType]);
+	
+
 	useEffect(() => {
 		generateCalendar();
 	}, [currentMonth, currentYear, events]);
@@ -188,6 +210,18 @@ export default function AddEvent() {
 			fetchEventsByUserId();
 		}
 	}, [user]);
+
+	// useEffect(() => {
+	// 	const state = location.state as any;
+	// 	if (state?.eventToEdit) {
+	// 		setEditMode(true);
+	// 		setSelectedEvent(state.eventToEdit);
+	// 		setCurrentEvent(state.eventToEdit);
+	// 		setFormStep(0);
+	// 	}
+	// }, [location.state]);
+
+	
 
 	const generateCalendar = () => {
 		const firstDay = new Date(currentYear, currentMonth, 1);
@@ -214,7 +248,7 @@ export default function AddEvent() {
 		for (let i = 1; i <= lastDate; i++) {
 			const date = new Date(currentYear, currentMonth, i);
 			days.push({
-				date: date.toISOString().split("T")[0],
+				date: `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(i).padStart(2, "0")}`,
 				isCurrentMonth: true,
 				isToday: isToday(date),
 				events: getEventsForDate(date, events),
@@ -243,8 +277,9 @@ export default function AddEvent() {
 			eventEnd.setHours(0, 0, 0, 0);
 			date.setHours(0, 0, 0, 0);
 			return date >= eventStart && date <= eventEnd;
-		});
+		});	
 	};
+	
 
 	const previousMonth = () => {
 		if (currentMonth === 0) {
@@ -269,6 +304,7 @@ export default function AddEvent() {
 		setCurrentMonth(today.getMonth());
 		setCurrentYear(today.getFullYear());
 	};
+	
 
 	const openAddEventModal = () => {
 		setEditMode(false);
@@ -286,126 +322,200 @@ export default function AddEvent() {
 		setShowEventModal(true);
 	};
 
+	
+
 	const handleSaveEvent = async (e) => {
-		e.preventDefault();
-		// Validate all required fields
-		const allRequiredFields = [
-			"publicContactName",
-			"publicEmail",
-			"publicPhone",
-			"organizationName",
-			"eventWebAddress",
-			"eventType",
-			"startEndType",
-			"locationName",
-			...(currentEvent.physicalEvent
-				? ["country", "stateProvince", "city", "address"]
-				: []),
-			"startDate",
-			"endDate",
-			"startTime",
-			"endTime",
-			"eventTitle",
-			"eventDescription",
-			"expectedAttendance",
-		];
+  e.preventDefault();
 
-		const missingFields = allRequiredFields.filter(
-			(field) =>
-				!currentEvent[field] ||
-				(typeof currentEvent[field] === "string" &&
-					currentEvent[field].trim() === ""),
-		);
+  // Validate all required fields
+  const allRequiredFields = [
+    "publicContactName",
+    "publicEmail",
+    "publicPhone",
+    "organizationName",
+    "eventWebAddress",
+    "eventType",
+    "startEndType",
+    ...(currentEvent.physicalEvent
+      ? ["country", "stateProvince", "city", "address", "locationName"]
+      : []),
+    "startDate",
+    "endDate",
+    "startTime",
+    "endTime",
+    "eventTitle",
+    "eventDescription",
+    "expectedAttendance",
+  ];
 
-		if (missingFields.length > 0) {
-			toast.error(`Please fill in: ${missingFields.join(", ")}`);
-			return;
-		}
+  const missingFields = allRequiredFields.filter(
+    (field) =>
+      !currentEvent[field] ||
+      (typeof currentEvent[field] === "string" && currentEvent[field].trim() === ""),
+  );
+
+  if (missingFields.length > 0) {
+    toast.error(`Please fill in: ${missingFields.join(", ")}`);
+    return;
+  }
+  try {
+    // Fix: nest address properly (from previous discussion)
+   const payload = {
+  userId: user.id,
+  publicContactName: currentEvent.publicContactName,
+  publicEmail: currentEvent.publicEmail,
+  publicPhone: currentEvent.publicPhone,
+  organizationName: currentEvent.organizationName,
+  eventWebAddress: currentEvent.eventWebAddress,
+  year: Number(currentEvent.year) || undefined,
+  eventType: currentEvent.eventType,
+  startEndType: currentEvent.startEndType,
+  physicalEvent: currentEvent.physicalEvent,
+  country: currentEvent.country,
+  stateProvince: currentEvent.stateProvince,
+  city: currentEvent.city,
+  address: typeof currentEvent.address === 'string' 
+    ? currentEvent.address.trim() 
+    : (currentEvent.address?.streetAddress || "").trim() || "",          // ← plain string!
+  locationName: currentEvent.locationName,
+  latitude: currentEvent.latitude,
+  longitude: currentEvent.longitude,
+
+  startDate: currentEvent.startDate,
+  endDate: currentEvent.endDate,
+  startTime: currentEvent.startTime,
+  endTime: currentEvent.endTime,
+
+  eventTitle: currentEvent.eventTitle,
+  eventColor: currentEvent.eventColor,
+  eventDescription: currentEvent.eventDescription,
+  expectedAttendance: Number(currentEvent.expectedAttendance),
+
+  promotionalImage: currentEvent.promotionalImage,
+};
+
+    let response;
+
+    if (editMode && selectedEvent?.id) {
+      // Update existing event
+	  console.log("Full payload being sent:", payload);
+      response = await axios.put(
+        `${import.meta.env.VITE_API_URL}/event/updateEvents/${selectedEvent.id}`,
+        payload,
+        {
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+	 
+
+    } else {
+      // Create new event
+      response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/createEvents`,
+        payload,
+        {
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    if (!response.data.event) {
+      console.error("Invalid response format: 'event' field missing");
+      toast.error(
+        editMode
+          ? "Failed to update event: Invalid response from server"
+          : "Failed to create event: Invalid response from server"
+      );
+      return;
+    }
+
+    const raw = response.data.event;
+
+    // Map backend response to frontend format
+    const mappedEvent = {
+      id: raw._id,
+      publicContactName: raw.contact?.publicContactName || "",
+      publicEmail: raw.contact?.publicEmail || "",
+      publicPhone: raw.contact?.publicPhone || "",
+      organizationName: raw.organization?.organizationName || "",
+      eventWebAddress: raw.eventInfo?.eventWebAddress || "",
+      year: raw.eventInfo?.year || "",
+      eventType: raw.eventInfo?.eventType || "Public Event",
+      startEndType: raw.eventInfo?.startEndType || "",
+      physicalEvent: raw.eventInfo?.physicalEvent ?? true,
+      country: raw.location?.country || "",
+      stateProvince: raw.location?.stateProvince || "",
+      city: raw.location?.city || "",
+	  address: raw.location.address.streetAddress || raw.location?.streetAddress || "",
+    //   address: raw.location?.address?.streetAddress || "",
+      locationName: raw.location?.locationName || "",
+      latitude: raw.location?.latitude || null,
+      longitude: raw.location?.longitude || null,
+      startDate: raw.date?.startDate || "",
+      endDate: raw.date?.endDate || "",
+      startTime: raw.date?.startTime || "09:00",
+      endTime: raw.date?.endTime || "17:00",
+      eventTitle: raw.details?.eventTitle || "",
+      eventColor: raw.details?.eventColor || "bg-blue-500",
+      eventDescription: raw.details?.eventDescription || "",
+      expectedAttendance: raw.details?.expectedAttendance || "",
+      promotionalImage: raw.promotionalImage || null,
+    };
+
+    // Update events list in state
+    setEvents((prev) => {
+      let updatedEvents;
+      if (editMode && selectedEvent?.id) {
+        updatedEvents = prev.map((ev) =>
+          ev.id === selectedEvent.id ? mappedEvent : ev
+        );
+      } else {
+        updatedEvents = [...prev, mappedEvent];
+      }
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedEvents));
+      return updatedEvents;
+    });
+
+    // Show success message
+    toast.success(
+      editMode ? "Event updated successfully!" : "Event created successfully!"
+    );
+
+    // ────────────────────────────────────────────────
+    // IMPORTANT: Reset form in BOTH create AND update cases
+    // ────────────────────────────────────────────────
+    setShowEventModal(false);
+    setCurrentEvent(initialEvent);           // ← reset form to empty/initial state
+    setFormStep(0);
+    setEditMode(false);
+    setSelectedEvent(null);
+
+    console.log("Event saved:", mappedEvent);
+	
+	
+
+  } catch (err) {
+    console.error("Error:", err.response?.data || err.message);
+    toast.error(
+      err.response?.data?.message ||
+        (editMode ? "Failed to update event" : "Failed to create event")
+    );
+  }
+};
+
+	const handleDeleteEvent = async () => {
+		if (!detailsEvent?.id) return;
 
 		try {
-			const response = await axios.post(
-				`${import.meta.env.VITE_API_URL}/createEvents`,
-				{
-					userId: user.id,
-					publicContactName: currentEvent.publicContactName,
-					publicEmail: currentEvent.publicEmail,
-					publicPhone: currentEvent.publicPhone,
-					organizationName: currentEvent.organizationName,
-					eventWebAddress: currentEvent.eventWebAddress,
-					year: Number(currentEvent.year) || undefined,
-					eventType: currentEvent.eventType,
-					startEndType: currentEvent.startEndType,
-					physicalEvent: currentEvent.physicalEvent,
-					country: currentEvent.country,
-					stateProvince: currentEvent.stateProvince,
-					city: currentEvent.city,
-					address: currentEvent.address,
-					locationName: currentEvent.locationName,
-					latitude: currentEvent.latitude,
-					longitude: currentEvent.longitude,
-					startDate: currentEvent.startDate,
-					endDate: currentEvent.endDate,
-					startTime: currentEvent.startTime,
-					endTime: currentEvent.endTime,
-					eventTitle: currentEvent.eventTitle,
-					eventColor: currentEvent.eventColor,
-					eventDescription: currentEvent.eventDescription,
-					expectedAttendance: Number(currentEvent.expectedAttendance),
-					promotionalImage: currentEvent.promotionalImage,
-				},
-				{
-					headers: { "Content-Type": "application/json" },
-				},
+			await axios.delete(
+				`${import.meta.env.VITE_API_URL}/event/deleteEvent/${detailsEvent.id}`,
+				{ withCredentials: true },
 			);
 
-			if (!response.data.event) {
-				console.error("Invalid response format: 'event' field missing");
-				toast.error(
-					"Failed to create event: Invalid response from server",
-				);
-				return;
-			}
-
-			console.log("EVENT CREATED", response.data);
-
-			// Map backend response to frontend event format
-			// Assuming backend saves latitude and longitude under location
-			const newEvent = {
-				id: response.data.event._id,
-				publicContactName:
-					response.data.event.contact.publicContactName,
-				publicEmail: response.data.event.contact.publicEmail,
-				publicPhone: response.data.event.contact.publicPhone,
-				organizationName:
-					response.data.event.organization.organizationName,
-				eventWebAddress: response.data.event.eventInfo.eventWebAddress,
-				year: response.data.event.eventInfo.year,
-				eventType: response.data.event.eventInfo.eventType,
-				startEndType: response.data.event.eventInfo.startEndType,
-				physicalEvent: response.data.event.eventInfo.physicalEvent,
-				country: response.data.event.location.country,
-				stateProvince: response.data.event.location.stateProvince,
-				city: response.data.event.location.city,
-				address: response.data.event.location.address.streetAddress,
-				locationName: response.data.event.location.locationName,
-				latitude: response.data.event.location.latitude,
-				longitude: response.data.event.location.longitude,
-				startDate: response.data.event.date.startDate,
-				endDate: response.data.event.date.endDate,
-				startTime: response.data.event.date.startTime,
-				endTime: response.data.event.date.endTime,
-				eventTitle: response.data.event.details.eventTitle,
-				eventColor: response.data.event.details.eventColor,
-				eventDescription: response.data.event.details.eventDescription,
-				expectedAttendance:
-					response.data.event.details.expectedAttendance,
-				promotionalImage: response.data.event.promotionalImage,
-			};
-
-			// Update the events state
 			setEvents((prev) => {
-				const updatedEvents = [...prev, newEvent];
-				// Save to localStorage
+				const updatedEvents = prev.filter(
+					(ev) => ev.id !== detailsEvent.id,
+				);
 				localStorage.setItem(
 					LOCAL_STORAGE_KEY,
 					JSON.stringify(updatedEvents),
@@ -413,14 +523,14 @@ export default function AddEvent() {
 				return updatedEvents;
 			});
 
-			toast.success("Event created successfully!");
-			setShowEventModal(false);
-			setCurrentEvent(initialEvent);
-			setFormStep(0);
+			toast.success("Event deleted successfully.");
+			setShowDetailsModal(false);
+			setDetailsEvent(null);
+			setShowDeleteConfirm(false);
 		} catch (err) {
-			console.error("Error:", err.response?.data || err.message);
+			console.error("Failed to delete event:", err);
 			toast.error(
-				err.response?.data?.message || "Failed to create event",
+				err.response?.data?.message || "Failed to delete event",
 			);
 		}
 	};
@@ -473,7 +583,6 @@ export default function AddEvent() {
 			setEvents(normalizedEvents);
 		} catch (err) {
 			console.error("Failed to fetch user events:", err);
-			toast.error("Could not load your events");
 		}
 	};
 
@@ -578,7 +687,7 @@ export default function AddEvent() {
 							currentEvent.physicalEvent ? "stateProvince" : null,
 							currentEvent.physicalEvent ? "city" : null,
 							currentEvent.physicalEvent ? "address" : null,
-							"locationName",
+							currentEvent.physicalEvent ? "locationName" : null,
 						].filter(Boolean)
 					: [
 							"startDate",
@@ -978,6 +1087,37 @@ export default function AddEvent() {
 													<SelectItem value="Webinar">
 														Webinar
 													</SelectItem>
+				
+													<SelectItem value="School Activity">
+														School Activity
+													</SelectItem>
+													<SelectItem value="Public Talk / Lecture">
+														Public Talk / Lecture
+													</SelectItem>
+													<SelectItem value="Workshop / Training">
+														Workshop / Training
+													</SelectItem>
+													<SelectItem value="Conference / Symposium">
+														Conference / Symposium
+													</SelectItem>
+													<SelectItem value="Exhibition / Display">
+														Exhibition / Display
+													</SelectItem>
+													<SelectItem value="Outreach / Community Event">
+														Outreach / Community Event
+													</SelectItem>
+													<SelectItem value="Observatory / Stargazing Event">
+														Observatory / Stargazing Event
+													</SelectItem>
+													<SelectItem value="Online Event (webinar, livestream)">
+														Online Event (webinar, livestream)
+													</SelectItem>
+													<SelectItem value="Competition / Challenge">
+														Competition / Challenge
+													</SelectItem>
+													<SelectItem value="Rocket Launch Event or Space Mission">
+														Rocket Launch Event or Space Mission
+													</SelectItem>
 													<SelectItem value="Other">
 														Other
 													</SelectItem>
@@ -1047,29 +1187,23 @@ export default function AddEvent() {
 									</div>
 								</div>
 							)}
-							{formStep === 1 && (
+							{formStep === 1 &&
+								(currentEvent.physicalEvent ? (
 								<div className="space-y-6 animate-fade-in">
 									<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
 										<div className="space-y-1">
 											<Label htmlFor="country">
 												Country
-												{currentEvent.physicalEvent && (
-													<span className="text-red-500">
-														*
-													</span>
-												)}
+												<span className="text-red-500">
+													*
+												</span>
 											</Label>
 											<select
 												id="country"
 												name="country"
 												value={currentEvent.country}
 												onChange={handleChange}
-												required={
-													currentEvent.physicalEvent
-												}
-												disabled={
-													!currentEvent.physicalEvent
-												}
+												required
 												className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0]"
 											>
 												<option value="" disabled>
@@ -1088,11 +1222,9 @@ export default function AddEvent() {
 										<div className="space-y-1">
 											<Label htmlFor="stateProvince">
 												State/Province{" "}
-												{currentEvent.physicalEvent && (
-													<span className="text-red-500">
-														*
-													</span>
-												)}
+												<span className="text-red-500">
+													*
+												</span>
 											</Label>
 											<Input
 												id="stateProvince"
@@ -1102,23 +1234,16 @@ export default function AddEvent() {
 												}
 												onChange={handleChange}
 												placeholder="State or Province"
-												required={
-													currentEvent.physicalEvent
-												}
-												disabled={
-													!currentEvent.physicalEvent
-												}
+												required
 												className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0]"
 											/>
 										</div>
 										<div className="space-y-1">
 											<Label htmlFor="city">
 												City{" "}
-												{currentEvent.physicalEvent && (
-													<span className="text-red-500">
-														*
-													</span>
-												)}
+												<span className="text-red-500">
+													*
+												</span>
 											</Label>
 											<Input
 												id="city"
@@ -1126,23 +1251,16 @@ export default function AddEvent() {
 												value={currentEvent.city}
 												onChange={handleChange}
 												placeholder="City"
-												required={
-													currentEvent.physicalEvent
-												}
-												disabled={
-													!currentEvent.physicalEvent
-												}
+												required
 												className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0]"
 											/>
 										</div>
 										<div className="space-y-1">
 											<Label htmlFor="address">
 												Address{" "}
-												{currentEvent.physicalEvent && (
-													<span className="text-red-500">
-														*
-													</span>
-												)}
+												<span className="text-red-500">
+													*
+												</span>
 											</Label>
 											<Input
 												id="address"
@@ -1150,12 +1268,7 @@ export default function AddEvent() {
 												value={currentEvent.address}
 												onChange={handleChange}
 												placeholder="Street Address"
-												required={
-													currentEvent.physicalEvent
-												}
-												disabled={
-													!currentEvent.physicalEvent
-												}
+												required
 												className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0]"
 											/>
 										</div>
@@ -1173,7 +1286,7 @@ export default function AddEvent() {
 													currentEvent.locationName
 												}
 												onChange={handleChange}
-												placeholder="Convention Center or Virtual Platform"
+												placeholder="Convention Center"
 												required
 												className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0]"
 											/>
@@ -1195,7 +1308,14 @@ export default function AddEvent() {
 										/>
 									</div>
 								</div>
-							)}
+							) : (
+								<div className="space-y-4 animate-fade-in">
+									<p className="text-sm text-slate-600">
+										This is a virtual event, so no physical
+										location details are required.
+									</p>
+								</div>
+							))}
 							{formStep === 2 && (
 								<div className="space-y-6 animate-fade-in">
 									<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
@@ -1620,7 +1740,7 @@ export default function AddEvent() {
 							</div>
 							<Button
 								variant="outline"
-								onClick={viewToday}
+								// onClick={viewToday}
 								className="px-4 py-2 rounded-full font-medium border-blue-200 hover:bg-blue-50 hover:border-blue-300 text-black-700"
 							>
 								Today
@@ -1675,6 +1795,7 @@ export default function AddEvent() {
                       `}
 										>
 											{new Date(day.date).getDate()}
+											
 										</span>
 										{day.isToday && (
 											<div className="bg-primary w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full"></div>
@@ -1699,9 +1820,9 @@ export default function AddEvent() {
 														</span>
 														{event.startTime && (
 															<span className="text-white/80 text-[9px] sm:text-[10px] ml-1 whitespace-nowrap">
-																{
+																{/* {
 																	event.startTime
-																}
+																} */}
 															</span>
 														)}
 													</div>
@@ -1728,8 +1849,7 @@ export default function AddEvent() {
 									{selectedDay && (
 										<div className="flex flex-col">
 											<h3 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">
-												Events on
-												{formatDate(selectedDay.date)}
+												Events on {formatDate(selectedDay.date)}
 											</h3>
 											<p className="text-xs sm:text-sm text-slate-500">
 												Select an event to view details
@@ -1769,11 +1889,9 @@ export default function AddEvent() {
 												<div className="mt-1 flex items-center text-xs sm:text-sm text-slate-600">
 													<Clock className="w-3 sm:w-4 h-3 sm:h-4 mr-1" />
 													<span>
-														{event.startTime ||
-															"09:00"}{" "}
+														{event.startTime || "09:00"} 
 														-{" "}
-														{event.endTime ||
-															"17:00"}
+														{event.endTime || "17:00"} 
 													</span>
 												</div>
 												<div className="mt-1 text-xs sm:text-sm text-slate-600 line-clamp-1">
@@ -1794,91 +1912,6 @@ export default function AddEvent() {
 								</div>
 							</DialogContent>
 						</Dialog>
-					</div>
-					<div className="mb-8">
-						{/* <div className="flex flex-col sm:flex-row justify-between items-center mb-4">
-							<h2 className="text-lg sm:text-xl font-semibold text-black">
-								All Events
-							</h2>
-							<Link
-								to="/events/all"
-								className="btn-primary flex items-center gap-2 py-2 px-4 text-sm rounded-lg mt-2 sm:mt-0"
-							>
-								Show All Events
-							</Link>
-						</div> */}
-						{/* <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-							{events.length === 0 && (
-								<div className="bg-[#220536] col-span-1 sm:col-span-2 lg:col-span-3 backdrop-blur-md rounded-lg shadow p-6 text-center border border-white/20">
-									<Calendar className="w-10 sm:w-12 text-slate-300 mx-auto mb-2" />
-									<h3 className="text-base sm:text-lg font-medium text-white mb-1">
-										No upcoming events
-									</h3>
-									<p className="text-white/70 mb-4 text-sm sm:text-base">
-										Start creating your events to see them
-										here
-									</p>
-								</div>
-							)}
-							{events.map((event) => (
-								<div
-									key={event.id}
-									className="bg-[#220536] backdrop-blur-md rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer border border-white/20"
-									onClick={() => openDetailsModal(event)}
-								>
-									<div className="h-48 sm:h-64 overflow-hidden relative">
-										<div
-											className={`absolute top-0 right-0 text-xs text-white px-2 py-1 rounded-bl-lg ${getEventColor(
-												event.eventColor
-											)}`}
-										>
-											{event.eventType}
-										</div>
-										{event.promotionalImage ? (
-											<img
-												src={event.promotionalImage}
-												alt={event.eventTitle}
-												className="w-full h-full object-cover"
-											/>
-										) : (
-											<div className="w-full h-full bg-white/10 flex items-center justify-center text-white/60">
-												No Image
-											</div>
-										)}
-									</div>
-									<div className="p-4">
-										<h3 className="font-semibold text-base sm:text-lg mb-1 truncate text-white">
-											{event.eventTitle}
-										</h3>
-										<div className="flex items-center text-xs sm:text-sm text-white/80 mb-2">
-											<Calendar className="h-4 w-4 mr-1" />
-											<span>
-												{formatDate(event.startDate)}
-											</span>
-											<span className="mx-1">-</span>
-											<span>
-												{formatDate(event.endDate)}
-											</span>
-										</div>
-										<div className="flex items-center text-xs sm:text-sm text-white/80 mb-2">
-											<MapPin className="h-4 w-4 mr-1" />
-											<span className="truncate">
-												{event.country}
-											</span>
-										</div>
-										<div>
-											<span className="text-xs sm:text-sm text-white/80 line-clamp-2">
-												State: {event.stateProvince}
-											</span>
-										</div>
-										<p className="text-xs sm:text-sm text-white/80 line-clamp-2">
-											Organization:{" "}
-											{event.organizationName}
-										</p>
-									</div>
-								</div>
-							))}
-						</div> */}
 					</div>
 				</div>
 			</section>
@@ -1910,14 +1943,18 @@ export default function AddEvent() {
 									<h2 className="text-xl sm:text-2xl font-bold">
 										{detailsEvent.eventTitle}
 									</h2>
+									
 								</div>
 							</div>
 							<div className="p-4 sm:p-6">
 								<div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
 									<div className="col-span-1 md:col-span-2">
-										<h3 className="text-base sm:text-lg font-semibold mb-2">
-											Event Details
-										</h3>
+										<div className="flex items-center justify-between mb-2">
+											<h3 className="text-base sm:text-lg font-semibold">
+												Event Details
+											</h3>
+											
+										</div>
 										<p className="mb-4 text-slate-700 text-sm sm:text-base">
 											{detailsEvent.eventDescription}
 										</p>
@@ -1982,7 +2019,7 @@ export default function AddEvent() {
 												</div>
 											)}
 										</div>
-									</div>
+										</div>
 									<div className="space-y-4">
 										<div className="bg-slate-50 rounded-lg p-4">
 											<h3 className="text-base sm:text-lg font-semibold mb-2">
@@ -2044,7 +2081,36 @@ export default function AddEvent() {
 															</div>
 														)}
 													</div>
+													
+	
+
 												</div>
+			
+												<div className="flex gap-4">
+													<Button
+												className="mt-4"
+												size="default"
+												// variant="outline"
+												onClick={() => {
+													setShowDetailsModal(false);
+													openEditEventModal(
+														detailsEvent,
+													);
+												}}
+											>
+												Edit Event
+											</Button>
+
+											<Button
+										className="mt-4 bg-red-600 text-white hover:bg-red-700 border-red-600"
+										size="default"
+										onClick={() => setShowDeleteConfirm(true)}
+									>
+										Delete Event
+									</Button>
+
+													</div>
+
 											</div>
 										</div>
 									</div>
@@ -2054,6 +2120,26 @@ export default function AddEvent() {
 					)}
 				</DialogContent>
 			</Dialog>
+			<ConfirmDialog
+				open={showDeleteConfirm}
+				onOpenChange={setShowDeleteConfirm}
+				title="Delete this event?"
+				description={
+					<div className="space-y-1">
+						<p>
+							This will permanently remove{" "}
+							<span className="font-semibold">
+								{detailsEvent?.eventTitle || "this event"}
+							</span>{" "}
+							from your calendar and cannot be undone.
+						</p>
+						
+					</div>
+				}
+				confirmLabel="Yes, delete event"
+				cancelLabel="Keep event"
+				onConfirm={handleDeleteEvent}
+			/>
 			<Footer />
 		</div>
 	);

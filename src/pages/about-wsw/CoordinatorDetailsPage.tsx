@@ -49,13 +49,13 @@ const CoordinatorDetails = () => {
               </p>
 
               <div className="flex items-center mt-4">
-                <img
+                {/* <img
                   src={`https://flagsapi.com/${coordinator.code}/flat/64.png`}
                   alt={coordinator.country}
                   className="w-10 h-10 mr-3"
-                />
+                /> */}
                 <span className="text-gray-700 text-lg">
-                  {coordinator.country} · {coordinator.region}
+                  {coordinator.bio}
                 </span>
               </div>
             </div>

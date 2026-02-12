@@ -7,11 +7,23 @@ import ParticlesBackground from "@/components/ParticlesBackground";
 import 'country-flag-icons/react/3x2';
 import { Link} from 'react-router-dom';
 import coordinatorsData from '@/Data/Coordinators';
-
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 const Coordinators = () => {
   const [scrollY, setScrollY] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
+  const [countrySearch, setCountrySearch] = useState("");
+  const navigate = useNavigate()
+
+// ✅ Get unique countries from coordinatorsData
+const countries = [...new Set(coordinatorsData.map(c => c.country))];
+
+// ✅ Filter countries
+const filteredCountries = countries.filter(country =>
+  country.toLowerCase().includes(countrySearch.toLowerCase())
+);
+
 
   useEffect(() => {
     const handleScroll = () => {
@@ -29,9 +41,6 @@ const Coordinators = () => {
 const demofilter = coordinatorsData.filter((coordinator)=> coordinator.country.toLowerCase().includes(searchTerm.toLowerCase()))
 const namefilter = coordinatorsData.filter((coordinator)=> coordinator.name.toLowerCase().includes(searchTerm.toLowerCase()))
 
-console.log("demofilter...",demofilter);
-console.log("namefilter...",namefilter);
-
 
 
   const filteredCoordinators = coordinatorsData.filter(coordinator =>
@@ -43,6 +52,41 @@ console.log("namefilter...",namefilter);
   
 
   const regions = [...new Set(coordinatorsData.map(c => c.region))];
+
+  const handlesubmit = async (countryName: string) => {
+		try {
+			console.error(null); // Reset error state
+			const response = await fetch(
+				`${import.meta.env.VITE_API_URL}/events/${encodeURIComponent(
+					countryName
+				)}`
+			);
+			const data = await response.json();
+
+			if (!response.ok) {
+				throw new Error(data.message || "Failed to fetch events");
+			}
+
+			// Adjust based on actual API response structure
+			const events = data?.data?.events || data?.events || [];
+
+			console.log(
+				`Events for ${countryName}:`,
+				events,
+				"Coordinators : ",
+				data
+			);
+
+			// Navigate to nation page with country name and events in state
+			navigate(`/nation/${encodeURIComponent(countryName)}`, {
+				state: { countryName: countryName, events: data.events },
+			});
+		} catch (error) {
+			console.error(`Error fetching events for ${countryName}:`, error);
+			console.error(error.message || "Error fetching events");
+			toast.error("No Events Found");
+		}
+	};
 
   return (
     <div className="min-h-screen bg-[#220536]">
@@ -173,6 +217,54 @@ console.log("namefilter...",namefilter);
         </div>
       </section>
 
+      {/* 🌍 National List Section */}
+<section className="py-20 bg-white">
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+    {/* Title */}
+    <h2 className="text-3xl sm:text-4xl font-bold text-[#204d74] mb-10 text-center">
+      Nation List
+    </h2>
+
+    {/* Search */}
+    <div className="max-w-xl mx-auto mb-8">
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
+        <input
+          type="text"
+          placeholder="Search countries..."
+          value={countrySearch}
+          onChange={(e) => setCountrySearch(e.target.value)}
+          className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9326E0] text-lg"
+        />
+      </div>
+    </div>
+
+    {/* Countries Grid */}
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+      {filteredCountries.map((country) => (
+        <button
+          key={country}
+          onClick={() => {
+										handlesubmit(country);
+									}} // filter coordinators
+          className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium text-gray-800 hover:bg-[#9326E0] hover:text-white hover:border-[#9326E0] transition-all duration-300"
+        >
+          {country}
+        </button>
+      ))}
+    </div>
+
+    {/* Empty State */}
+    {filteredCountries.length === 0 && (
+      <p className="text-center text-gray-500 mt-6">
+        No countries found ❌
+      </p>
+    )}
+  </div>
+</section>
+
+
       {/* Become Coordinator CTA */}
       <section className="py-24 bg-gradient-to-b from-[#0f0118] to-[#1a0429] relative">
         <div className="absolute inset-0 overflow-hidden">
@@ -211,12 +303,15 @@ console.log("namefilter...",namefilter);
               <p className="text-gray-300">Make a difference in space education within your community</p>
             </div>
           </div>
+
+          
           
           <button className="bg-gradient-to-r from-[#9326E0] to-[#204d74] text-white px-8 py-4 rounded-xl font-semibold text-lg hover:shadow-lg hover:shadow-[#9326E0]/25 transition-all duration-300 transform hover:scale-105">
             Apply to Become a Coordinator
           </button>
         </div>
       </section>
+      
       
       <Footer />
     </div>

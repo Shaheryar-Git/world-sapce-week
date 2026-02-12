@@ -5,7 +5,6 @@ import { useLocation } from "react-router-dom";
 const CoordinatorInfo = ({ coordinators }) => {
 	const location = useLocation();
 	const countryName = (location.state?.countryName as string) || "No Country";
-	const [coordinator, setCoordinator] = useState<any | null>(coordinators);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
@@ -28,7 +27,7 @@ const CoordinatorInfo = ({ coordinators }) => {
 								<th className="border p-2">Country</th>
 								<th className="border p-2">Name</th>
 								<th className="border p-2">Email</th>
-								<th className="border p-2">Phone</th>
+								<th className="border p-2">Local WSW Websites</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -39,13 +38,13 @@ const CoordinatorInfo = ({ coordinators }) => {
 									</td>
 									<td className="border p-2">
 										{coordinator.firstName}{" "}
-										{coordinator.lastName}
+										{/* {coordinator.lastName} */}
 									</td>
 									<td className="border p-2">
 										{coordinator.email}
 									</td>
 									<td className="border p-2">
-										{coordinator.cellPhone}
+										{coordinator.spaceWebPage}
 									</td>
 								</tr>
 							))}
@@ -53,7 +52,7 @@ const CoordinatorInfo = ({ coordinators }) => {
 					</table>
 				) : (
 					<p className="text-space-text">
-						You are not a coordinator.
+						No coordinator Found.
 					</p>
 				)}
 			</CardContent>

@@ -19,6 +19,9 @@ import {
 import ParticlesBackground from "@/components/ParticlesBackground";
 import { toast } from "sonner";
 import axios from "axios";
+import { useAuth } from "@/context/AuthProvider";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { useNavigate } from "react-router-dom";
 
 
 const LOCAL_STORAGE_KEY = "wsw_events";
@@ -31,6 +34,7 @@ type EventType = {
   organizationName: string;
   eventWebAddress: string;
   year: string;
+  startEndType?: string;
   physicalEvent: boolean;
   eventTitle: string;
   eventDescription: string;
@@ -47,6 +51,8 @@ type EventType = {
   eventColor: string;
   promotionalImage: string | null;
   expectedAttendance: string;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 function formatDate(date: string) {
@@ -62,7 +68,10 @@ export default function AllEvents() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [detailsEvent, setDetailsEvent] = useState<EventType | null>(null);
   const [scrollY, setScrollY] = useState(0);
-
+  const { user } = useAuth();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const navigate = useNavigate();
+  
   useEffect(() => {
     const handleScroll = () => {
       setScrollY(window.scrollY);
@@ -72,38 +81,107 @@ export default function AllEvents() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-   useEffect(() => {
-  const fetchEvents = async () => {
-    try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/events`);
-      if (response.data && Array.isArray(response.data)) {
-        setEvents(response.data);
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(response.data));
-      } else {
-        setEvents([]);
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify([]));
-      }
-    } catch (err) {
-      console.error("Error fetching events:", err);
-      toast.error("Failed to load events");
-      // Fallback to localStorage
-      const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (stored) {
-        try {
-          setEvents(JSON.parse(stored));
-        } catch (e) {
-          setEvents([]);
-        }
-      }
-    }
-  };
+  useEffect(() => {
+		if (user?.id) {
+			fetchEventsByUserId();
+		}
+	}, [user]);
 
-  fetchEvents();
-}, []);
+  const fetchEventsByUserId = async () => {
+		if (!user?.id) return;
+
+		try {
+			const res = await axios.get(
+				`${import.meta.env.VITE_API_URL}/event/user/${user.id}`,
+				{ withCredentials: true },
+			);
+
+			console.log("Raw events from backend:", res.data.events);
+
+			// Normalize to the flat shape your UI expects
+			const normalizedEvents = res.data.events.map((raw: any) => ({
+				id: raw._id,
+				publicContactName: raw.contact?.publicContactName || "",
+				publicEmail: raw.contact?.publicEmail || "",
+				publicPhone: raw.contact?.publicPhone || "",
+				organizationName: raw.organization?.organizationName || "",
+				eventWebAddress: raw.eventInfo?.eventWebAddress || "",
+				year: raw.eventInfo?.year || "",
+				eventType: raw.eventInfo?.eventType || "Public Event",
+				startEndType: raw.eventInfo?.startEndType || "",
+				physicalEvent: raw.eventInfo?.physicalEvent ?? true,
+				country: raw.location?.country || "",
+				stateProvince: raw.location?.stateProvince || "",
+				city: raw.location?.city || "",
+				address:
+					raw.location?.address?.streetAddress ||
+					raw.location?.address ||
+					"",
+				locationName: raw.location?.locationName || "",
+				latitude: raw.location?.latitude || null,
+				longitude: raw.location?.longitude || null,
+				startDate: raw.date?.startDate || "",
+				endDate: raw.date?.endDate || "",
+				startTime: raw.date?.startTime || "09:00",
+				endTime: raw.date?.endTime || "17:00",
+				eventTitle: raw.details?.eventTitle || "",
+				eventColor: raw.details?.eventColor || "bg-blue-500",
+				eventDescription: raw.details?.eventDescription || "",
+				expectedAttendance: raw.details?.expectedAttendance || "",
+				promotionalImage: raw.promotionalImage || null,
+			}));
+
+			console.log("Normalized events:", normalizedEvents);
+			setEvents(normalizedEvents);
+		} catch (err) {
+			console.error("Failed to fetch user events:", err);
+			toast.error("Could not load your events");
+		}
+	};
+
+
+//    useEffect(() => {
+
+//   fetchEvents();
+// }, []);
 
   const openDetailsModal = (event: EventType) => {
     setDetailsEvent(event);
     setShowDetailsModal(true);
+  };
+
+  const handleDeleteEvent = async () => {
+    if (!detailsEvent?.id) return;
+
+    try {
+      await axios.delete(
+        `${import.meta.env.VITE_API_URL}/event/deleteEvent/${detailsEvent.id}`,
+        { withCredentials: true },
+      );
+
+      setEvents((prev) => {
+        const updatedEvents = prev.filter((ev) => ev.id !== detailsEvent.id);
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedEvents));
+        return updatedEvents;
+      });
+
+      toast.success("Event deleted successfully.");
+      setShowDetailsModal(false);
+      setDetailsEvent(null);
+      setShowDeleteConfirm(false);
+    } catch (err: any) {
+      console.error("Failed to delete event:", err);
+      toast.error(
+        err?.response?.data?.message || "Failed to delete event",
+      );
+    }
+  };
+
+
+  const handleEditEvent = () => {
+    if (!detailsEvent) return;
+    setShowDetailsModal(false);
+    navigate("/events/add", { state: { eventToEdit: detailsEvent } });
   };
 
   const parallaxOffset = scrollY * 0.3;
@@ -237,7 +315,9 @@ export default function AllEvents() {
               <div className="p-2 sm:p-6">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
                   <div className="col-span-2">
-                    <h3 className="text-base sm:text-lg font-semibold mb-2">Event Details</h3>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-base sm:text-lg font-semibold">Event Details</h3>
+                    </div>
                     <p className="mb-4 text-slate-700 text-sm sm:text-base">
                       {detailsEvent.eventDescription}
                     </p>
@@ -328,6 +408,22 @@ export default function AllEvents() {
                             <span>{detailsEvent.expectedAttendance}</span> Expected Attendees
                           </div>
                         </div>
+                         <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          // variant="outline"
+                          onClick={handleEditEvent}
+                        >
+                          Edit Event
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="bg-red-600 text-white hover:bg-red-700 border-red-600"
+                          onClick={() => setShowDeleteConfirm(true)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
                       </div>
                     </div>
                   </div>
@@ -337,6 +433,32 @@ export default function AllEvents() {
           )}
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title="Delete this event?"
+        description={
+          <div className="space-y-1">
+            <p>
+              This will permanently remove{" "}
+              <span className="font-semibold">
+                {detailsEvent?.eventTitle || "this event"}
+              </span>{" "}
+              and it cannot be undone.
+            </p>
+            {detailsEvent?.startDate && (
+              <p className="text-xs text-slate-400">
+                {formatDate(detailsEvent.startDate)} •{" "}
+                {detailsEvent.locationName}
+              </p>
+            )}
+          </div>
+        }
+        confirmLabel="Yes, delete event"
+        cancelLabel="Keep event"
+        onConfirm={handleDeleteEvent}
+      />
     </div>
   );
 }

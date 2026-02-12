@@ -11,6 +11,7 @@ import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import moment from "moment";
 
 // Animation variants
 const containerVariants: Variants = {
@@ -248,8 +249,8 @@ const EventDetail = () => {
                 <CardContent className="space-y-6">
                   <motion.div variants={itemVariants} className="grid gap-4">
                     <div className="grid grid-cols-2 gap-4">
-                      <InfoBlock label="Start Date" value={event.date.startDate} />
-                      <InfoBlock label="End Date" value={event.date.endDate} />
+                      <InfoBlock label="Start Date" value={moment(event.date.startDate).format("MMMM DD, YYYY")} />
+                      <InfoBlock label="End Date" value={moment(event.date.endDate).format("MMMM DD, YYYY")} />
                     </div>
                     <InfoBlock label="Organizer" value={event.organization.organizationName} />
                     <InfoBlock label="Event Type" value={event.eventInfo.eventType} />

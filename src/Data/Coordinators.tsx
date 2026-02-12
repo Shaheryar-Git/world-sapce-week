@@ -10,7 +10,7 @@ const coordinatorsData = [
 
   // 🌍 Africa
   { id: 9, country: "South Africa", name: "Sean Jacobs", role: "Future African Space", email: "sean@fasesa.com", region: "Africa", code: "ZA" },
-  { id: 10, country: "Algeria", name: "Hichem Guergouri", role: "Research Unit in Scientific Mediation & Culture", email: "guergouri.hichem.92@gmail.com", region: "Africa", code: "DZ" },
+  { id: 10, country: "Algeria",bio:"Guergouri Hichem is a young researcher in astrophysics at the Research Unit in Scientific Mediation and Culture. He earned his PhD in theoretical physics from Bejaia University, specializing in astrophysics and Cosmology, he works in many research collaborations. Over the past two decades, he has been deeply committed to science communication and public outreach. His passion for making complex scientific ideas accessible to diverse audiences has driven him to engage with people from all walks of life.", name: "Hichem Guergouri", role: "Research Unit in Scientific Mediation & Culture", email: "guergouri.hichem.92@gmail.com", region: "Africa", code: "DZ" },
   { id: 11, country: "Angola", name: "Dr. Lumonansoni Andr", role: "National Space Program Management Office", email: "None", region: "Africa", code: "AO" },
   { id: 12, country: "Botswana", name: "Nonofo Mogopodi", role: "Stream International", email: "nmogopodi@yahoo.com", region: "Africa", code: "BW" },
   { id: 13, country: "Ghana", name: "Dunamis Chukwuemeka Uzochukwu", email: "uzochukwudunamis@gmail.com", region: "Africa", code: "GH" },
@@ -23,7 +23,7 @@ const coordinatorsData = [
   { id: 20, country: "Reunion", name: "Willy LAMEYER", role: "Reunion Island Space Initiative", email: "willy.lameyer@ac-reunion.fr", region: "Africa", code: "RE" },
 
   // 🌏 Asia
-  { id: 21, country: "Afghanistan", name: "Amena Karimyan", role: "Afghanistan Astronomical Private Organization", email: "Amena.karimyan5566@gmail.com", region: "Asia", code: "AF" },
+  { id: 21, country: "Afghanistan", bio:"Lorem Ipsum is simply dummy text of the printing and typesetting industry.Lorem Ipsum has been the industry’s standard dummy text ever since the 1500s,when an unknown printer took a galley of type and scrambled it to make a type specimen book." ,name: "Amena Karimyan", role: "Afghanistan Astronomical Private Organization", email: "Amena.karimyan5566@gmail.com", region: "Asia", code: "AF" },
   { id: 22, country: "Azerbaijan", name: "Natavan Hasanova", role: "Azercosmos Space Agency of the Republic of Azerbaijan", email: "nata1.hasanova@gmail.com", region: "Asia", code: "AZ" },
   { id: 23, country: "Bahrain", name: "Fatema Mohammed Alhammadi", role: "National Space Science Agency of Bahrain", email: "Fatema.alhammadi@nssa.gov.bh", region: "Asia", code: "BH" },
   { id: 24, country: "Bangladesh", name: "Reza Sarker", role: "Bangladesh Astronomical Society", email: "lrzsarker@gmail.com", region: "Asia", code: "BD" },
