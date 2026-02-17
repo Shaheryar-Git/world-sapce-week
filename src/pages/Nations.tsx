@@ -5,9 +5,12 @@ import CoordinatorInfo from "@/pages/CoordinatorInfo";
 import InquiryForm from "@/pages/InquiryForm";
 import Footer from "@/components/Footer";
 import Navigation from "@/components/Navigation";
-import moment from "moment";
+import axios from "axios";
+import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 interface Event {
+  _id: string;
   location: {
     country: string;
     city: string;
@@ -30,6 +33,7 @@ interface Event {
 	physicalEvent: boolean;
 	year: number;
   }
+  
 }
 
 const Nation = () => {
@@ -41,48 +45,115 @@ const Nation = () => {
   const [error, setError] = useState<string | null>(null);
   const [showAllEvents, setShowAllEvents] = useState(false);
 
+  const navigate = useNavigate();
+
+  const sortEventsNewestFirst = (list: Event[]) => {
+    return [...list].sort((a, b) => {
+      const yearA = a.eventInfo?.year ?? 0;
+      const yearB = b.eventInfo?.year ?? 0;
+
+      // Primary: year (descending)
+      if (yearA !== yearB) return yearB - yearA;
+
+      // Secondary: start date (descending within same year)
+      const dateA = a.date?.startDate
+        ? new Date(a.date.startDate).getTime()
+        : 0;
+      const dateB = b.date?.startDate
+        ? new Date(b.date.startDate).getTime()
+        : 0;
+      return dateB - dateA;
+    });
+  };
+  
+  const formatDateWithOrdinal = (value: unknown): string => {
+    if (value === null || value === undefined || value === "") return "—";
+  
+    const d = value instanceof Date ? value : new Date(value as any);
+    if (Number.isNaN(d.getTime())) return "—";
+  
+    const day = d.getDate();
+    const year = d.getFullYear();
+  
+    const month = d.toLocaleString("en-US", { month: "short" }); // Feb
+  
+    // ordinal suffix
+    const getOrdinal = (n: number) => {
+      if (n >= 11 && n <= 13) return "th";
+      switch (n % 10) {
+        case 1:
+          return "st";
+        case 2:
+          return "nd";
+        case 3:
+          return "rd";
+        default:
+          return "th";
+      }
+    };
+  
+    return `${day}${getOrdinal(day)} ${month}, ${year}`;
+  };
+
+  const handleEventClick = async (eventId: string) => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/getEvent/${eventId}`);
+      const event = response.data?.data;
+      console.log("event", event);
+      navigate(`/event/${eventId}`, {
+        state: { event },
+      });
+    } catch (error) {
+      console.error(`Error fetching event for ID ${eventId}:`, error);
+      toast.error(
+        error.response?.data?.message ||
+          error.message ||
+          `Failed to fetch event details for ID ${eventId}`
+      );
+    }
+  };
+  
+
   const visibleEvents = showAllEvents ? events : events.slice(0, 4);
 
 
   // Fetch events if not provided in location.state
- useEffect(() => {
-  const fetchEvents = async () => {
-    if (events.length > 0) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/events/${countryName}`);
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to fetch events");
+  useEffect(() => {
+    const fetchEvents = async () => {
+      if (events.length > 0) {
+        // If events already present from navigation, ensure they are sorted
+        setEvents((prev) => sortEventsNewestFirst(prev));
+        setLoading(false);
+        return;
       }
 
-      const fetchedEvents = data?.data?.events || [];
+      try {
+        setLoading(true);
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/events/${countryName}`
+        );
+        const data = await response.json();
 
-      // Sort events by year DESCENDING (2026 → 2025 → 2024 ...)
-      const sortedEvents = [...fetchedEvents].sort((a, b) => {
-        const yearA = a.eventInfo?.year || 0;
-        const yearB = b.eventInfo?.year || 0;
-        return yearB - yearA; // descending: bigger year first
-      });
+        if (!response.ok) {
+          throw new Error(data.message || "Failed to fetch events");
+        }
 
-      setEvents(sortedEvents);
-      setCoordinators(data?.data?.coordinator || []);
-      setError(null);
-    } catch (err) {
-      setError(err.message || "Error fetching events");
-      setEvents([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+        const fetchedEvents = data?.data?.events || [];
+        const sortedEvents = sortEventsNewestFirst(fetchedEvents);
 
-  fetchEvents();
-}, [countryName, events.length]);
+        setEvents(sortedEvents);
+        setCoordinators(data?.data?.coordinator || []);
+        setError(null);
+      } catch (err: any) {
+        setError(err.message || "Error fetching events");
+        setEvents([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, [countryName, events.length]);
 
   // Remove Leaflet attribution (if using Leaflet in MapSection)
   useEffect(() => {
@@ -125,6 +196,9 @@ const Nation = () => {
               </th>
               <th className="px-4 py-4 text-left text-sm font-semibold text-gray-800">
                 Year
+              </th>
+              <th className="px-4 py-4 text-left text-sm font-semibold text-gray-800">
+                View Details
               </th>
             </tr>
           </thead>
@@ -172,9 +246,14 @@ const Nation = () => {
                 {/* Year */}
                 <td className="px-4 py-4 text-sm font-medium text-[#9326E0] flex sm:table-cell">
                   <span className="font-bold sm:hidden mr-2">Year:</span>
+                  {/* {formatDateWithOrdinal(event.eventInfo?.year)} */}
                   {event.eventInfo?.year || "—"}
-				  {/* {moment(event.eventInfo?.year).format("MMMM DD, YYYY")} */}
+                  
                 </td>
+
+                <button onClick={() => handleEventClick(event._id)} className="px-4 py-4 text-sm font-medium text-[#9326E0] flex sm:table-cell">
+                  View Event
+                 </button>
               </tr>
             ))}
           </tbody>

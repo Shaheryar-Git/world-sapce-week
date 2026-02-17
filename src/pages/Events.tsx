@@ -402,7 +402,7 @@ const Events = () => {
       </motion.section>
 
       {/* Event Tools Section */}
-      <motion.section
+      {/* <motion.section
         className="py-24 bg-gradient-to-b from-[#f5f7fa] to-[#e2e8f0]"
         initial={{ y: 100, opacity: 0 }}
         whileInView={{ y: 0, opacity: 1 }}
@@ -498,7 +498,7 @@ const Events = () => {
             ))}
           </motion.div>
         </div>
-      </motion.section>
+      </motion.section> */}
 
       <Footer />
     </div>

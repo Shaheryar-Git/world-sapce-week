@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useLocation, useNavigationType } from "react-router-dom";
+import { useLocation, useNavigate, useNavigationType } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -79,7 +79,7 @@ const initialEvent = {
 	endTime: "17:00",
 	eventTitle: "",
 	eventDescription: "",
-	promotionalImage: null,
+	promotionalImage: "",
 	expectedAttendance: "",
 	eventColor: "bg-blue-500",
 	latitude: null,
@@ -104,15 +104,13 @@ function formatDate(date) {
 }
 
 // Helper: get YYYY-MM-DD string in local timezone (what user actually sees as "today")
-function getTodayString(): string {
-	const now = new Date();
-	return now.toISOString().split("T")[0]; // "2026-01-29"
-	// OR more explicit local:
-	// return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-}
-
-function isToday(dateStr: string): boolean {
-	return dateStr === getTodayString();
+function isToday(date: Date): boolean {
+	const today = new Date();
+	return (
+		date.getFullYear() === today.getFullYear() &&
+		date.getMonth() === today.getMonth() &&
+		date.getDate() === today.getDate()
+	);
 }
 
 function getDaysInMonth(year, month) {
@@ -160,6 +158,7 @@ export default function AddEvent() {
 	countries.registerLocale(enLocale);
 	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 	const navigationType = useNavigationType();
+	const navigate = useNavigate();
 
 	useEffect(() => {
 		const handleScroll = () => {
@@ -171,6 +170,19 @@ export default function AddEvent() {
 
 	const parallaxOffset = scrollY * 0.3;
 	const fadeOffset = Math.max(0, 1 - scrollY * 0.001);
+	const isSingleDay = currentEvent.startEndType === "Single Day";
+
+	useEffect(() => {
+		// If the event is single-day, disable end date picking and keep it in sync
+		if (!isSingleDay) return;
+
+		setShowEndPicker(false);
+		setCurrentEvent((prev) => ({
+			...prev,
+			endDate: prev.startDate || prev.endDate,
+		}));
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [isSingleDay, currentEvent.startDate]);
 
 	// useEffect(() => {
 	// 	const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -240,7 +252,7 @@ export default function AddEvent() {
 			days.push({
 				date: date.toISOString().split("T")[0],
 				isCurrentMonth: false,
-				isToday: isToday(date.toISOString().split("T")[0]),
+				isToday: isToday(date),
 				events: getEventsForDate(date, events),
 			});
 		}
@@ -374,9 +386,7 @@ export default function AddEvent() {
   country: currentEvent.country,
   stateProvince: currentEvent.stateProvince,
   city: currentEvent.city,
-  address: typeof currentEvent.address === 'string' 
-    ? currentEvent.address.trim() 
-    : (currentEvent.address?.streetAddress || "").trim() || "",          // ← plain string!
+  address: String(currentEvent.address || "").trim(), // keep as plain string
   locationName: currentEvent.locationName,
   latitude: currentEvent.latitude,
   longitude: currentEvent.longitude,
@@ -391,22 +401,23 @@ export default function AddEvent() {
   eventDescription: currentEvent.eventDescription,
   expectedAttendance: Number(currentEvent.expectedAttendance),
 
-  promotionalImage: currentEvent.promotionalImage,
+	promotionalImage: currentEvent.promotionalImage || null,
 };
 
     let response;
 
     if (editMode && selectedEvent?.id) {
       // Update existing event
-	  console.log("Full payload being sent:", payload);
+	//   console.log("Full payload being sent:", payload);
       response = await axios.put(
         `${import.meta.env.VITE_API_URL}/event/updateEvents/${selectedEvent.id}`,
         payload,
         {
-          headers: { "Content-Type": "application/json" },
+          headers: {"Content-Type": "multipart/form-data",},
         }
+		
       );
-	 
+	  navigate("/events/all")
 
     } else {
       // Create new event
@@ -414,7 +425,7 @@ export default function AddEvent() {
         `${import.meta.env.VITE_API_URL}/createEvents`,
         payload,
         {
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "multipart/form-data",},
         }
       );
     }
@@ -489,6 +500,7 @@ export default function AddEvent() {
     setFormStep(0);
     setEditMode(false);
     setSelectedEvent(null);
+	
 
     console.log("Event saved:", mappedEvent);
 	
@@ -594,9 +606,19 @@ export default function AddEvent() {
 		}));
 	};
 
-	const handleDateSelect = (date, field) => {
-		const formattedDate = date ? date.toISOString().split("T")[0] : "";
-		setCurrentEvent((prev) => ({ ...prev, [field]: formattedDate }));
+const handleDateSelect = (date, field) => {
+		if (!date) {
+			setCurrentEvent((prev) => ({ ...prev, [field]: "" }));
+		} else {
+			// Use local date parts to avoid UTC off‑by‑one issues
+			const year = date.getFullYear();
+			const month = String(date.getMonth() + 1).padStart(2, "0");
+			const day = String(date.getDate()).padStart(2, "0");
+			const formattedDate = `${year}-${month}-${day}`;
+
+			setCurrentEvent((prev) => ({ ...prev, [field]: formattedDate }));
+		}
+
 		if (field === "startDate") setShowStartPicker(false);
 		if (field === "endDate") setShowEndPicker(false);
 	};
@@ -609,10 +631,11 @@ export default function AddEvent() {
 		const file = e.target.files?.[0];
 		if (file) {
 			const reader = new FileReader();
-			reader.onload = (ev) => {
+			reader.onload = () => {
+				const result = reader.result;
 				setCurrentEvent((prev) => ({
 					...prev,
-					promotionalImage: ev.target?.result,
+					promotionalImage: typeof result === "string" ? result : "",
 				}));
 			};
 			reader.readAsDataURL(file);
@@ -640,6 +663,7 @@ export default function AddEvent() {
 	const openDetailsModal = (event) => {
 		setDetailsEvent(event);
 		setShowDetailsModal(true);
+
 	};
 
 	const monthNames = [
@@ -816,6 +840,23 @@ export default function AddEvent() {
 		events,
 	]);
 
+	useEffect(() => {
+		if (location.state?.eventToEdit) {
+		  setEditMode(true);
+		  
+		  
+		}
+	  
+		if (location.state?.scrollToEdit && addEventFormRef.current) {
+		  setTimeout(() => {
+			addEventFormRef.current.scrollIntoView({
+			  behavior: "smooth",
+			  block: "start",
+			});
+		  }, 150); // small delay for layout render
+		}
+	  }, [location.state]);
+
 	return (
 		<div className="relative overflow-hidden">
 			<Navigation />
@@ -862,7 +903,7 @@ export default function AddEvent() {
 						<form
 							ref={addEventFormRef}
 							onSubmit={handleSaveEvent}
-							className="space-y-6 sm:space-y-8"
+							className="editSection space-y-6 sm:space-y-8"
 						>
 							<div className="flex flex-col sm:flex-row items-center justify-between mb-8 sm:mb-12 gap-4">
 								{formSteps.map((step, index) => {
@@ -1132,15 +1173,24 @@ export default function AddEvent() {
 												value={
 													currentEvent.startEndType
 												}
-												onValueChange={(val) =>
+												onValueChange={(val) => {
 													handleChange({
 														target: {
 															name: "startEndType",
 															value: val,
 															type: "select-one",
 														},
-													})
-												}
+													});
+
+													// If single-day, mirror end date to start date and close picker
+													if (val === "Single Day") {
+														setShowEndPicker(false);
+														setCurrentEvent((prev) => ({
+															...prev,
+															endDate: prev.startDate || "",
+														}));
+													}
+												}}
 											>
 												<SelectTrigger
 													id="startEndType"
@@ -1432,29 +1482,36 @@ export default function AddEvent() {
 											</Label>
 											<div className="relative flex-1">
 												<Calendar
-													className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 cursor-pointer"
-													onClick={() =>
-														setShowEndPicker(
-															!showEndPicker,
-														)
-													}
+													className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${
+														isSingleDay
+															? "text-gray-300 cursor-not-allowed"
+															: "text-gray-400 cursor-pointer"
+													}`}
+													onClick={() => {
+														if (isSingleDay) return;
+														setShowEndPicker(!showEndPicker);
+													}}
 												/>
 												<Input
 													id="endDate"
 													name="endDate"
 													type="text"
 													value={currentEvent.endDate}
-													onClick={() =>
-														setShowEndPicker(
-															!showEndPicker,
-														)
-													}
+													onClick={() => {
+														if (isSingleDay) return;
+														setShowEndPicker(!showEndPicker);
+													}}
 													readOnly
-													className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0]"
+													disabled={isSingleDay}
+													required={!isSingleDay}
+													className={`w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0] ${
+														isSingleDay
+															? "bg-gray-100 text-gray-500 cursor-not-allowed"
+															: ""
+													}`}
 													placeholder="Select date"
-													required
 												/>
-												{showEndPicker && (
+												{showEndPicker && !isSingleDay && (
 													<div className="absolute z-10 mt-1 bg-white rounded-lg shadow-[0_10px_38px_-10px_rgba(0,0,0,0.35),0_10px_20px_-15px_rgba(0,0,0,0.2)]">
 														<DayPicker
 															mode="single"
@@ -1917,6 +1974,14 @@ export default function AddEvent() {
 			</section>
 			<Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
 				<DialogContent className="max-w-[90vw] sm:max-w-3xl max-h-[90vh] overflow-y-auto p-0">
+					<button
+						type="button"
+						onClick={() => setShowDetailsModal(false)}
+						className="absolute text-white right-4 top-4 z-50 rounded-sm opacity-70 hover:opacity-100"
+					>
+						<X className="h-5 w-5" />
+					</button>
+
 					{detailsEvent && (
 						<>
 							<div className="relative h-48 sm:h-64">

@@ -71,6 +71,7 @@ export default function AllEvents() {
   const { user } = useAuth();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState("");
   
   useEffect(() => {
     const handleScroll = () => {
@@ -135,7 +136,7 @@ export default function AllEvents() {
 			setEvents(normalizedEvents);
 		} catch (err) {
 			console.error("Failed to fetch user events:", err);
-			toast.error("Could not load your events");
+			
 		}
 	};
 
@@ -181,11 +182,30 @@ export default function AllEvents() {
   const handleEditEvent = () => {
     if (!detailsEvent) return;
     setShowDetailsModal(false);
-    navigate("/events/add", { state: { eventToEdit: detailsEvent } });
+    navigate("/events/add", { state: { eventToEdit: detailsEvent, scrollToEdit: true } });
   };
 
   const parallaxOffset = scrollY * 0.3;
   const fadeOffset = Math.max(0, 1 - scrollY * 0.001);
+
+  const filteredEvents = events.filter((event) => {
+    const query = searchTerm.trim().toLowerCase();
+    if (!query) return true;
+
+    const fieldsToSearch = [
+      event.eventTitle,
+      event.eventDescription,
+      event.organizationName,
+      event.city,
+      event.country,
+      event.locationName,
+      event.eventType,
+    ];
+
+    return fieldsToSearch.some((field) =>
+      field?.toLowerCase().includes(query)
+    );
+  });
 
   return (
     <div className="min-h-screen bg-[#220536]">
@@ -225,16 +245,32 @@ export default function AllEvents() {
 
       <section className="py-8 sm:py-12">
         <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-6 sm:mb-8 text-center">
-            We Events
-          </h1>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl font-bold text-white text-center sm:text-left">
+              My Events
+            </h1>
+            <div className="w-full sm:w-72">
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search events..."
+                className="w-full px-3 py-2 rounded-md border border-white/20 bg-white/10 text-white placeholder:text-white/60 focus:outline-none focus:ring-2 focus:ring-[#9327e0] focus:border-transparent text-sm sm:text-base"
+              />
+            </div>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {events.length === 0 && (
               <div className="col-span-1 sm:col-span-2 lg:col-span-3 bg-white/10 backdrop-blur-md rounded-2xl shadow-xl p-4 sm:p-6 border border-white/20 text-white text-center">
                 <p>No events available.</p>
               </div>
             )}
-            {events.map((event) => (
+            {events.length > 0 && filteredEvents.length === 0 && (
+              <div className="col-span-1 sm:col-span-2 lg:col-span-3 bg-white/10 backdrop-blur-md rounded-2xl shadow-xl p-4 sm:p-6 border border-white/20 text-white text-center">
+                <p>No events match your search.</p>
+              </div>
+            )}
+            {filteredEvents.map((event) => (
               <div
                 key={event.id}
                 className="bg-white/10 backdrop-blur-md rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer border border-white/20"
@@ -287,6 +323,13 @@ export default function AllEvents() {
       {/* Event Details Modal */}
       <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
         <DialogContent className="max-w-[90%] sm:max-w-3xl max-h-[90vh] overflow-y-auto p-0 sm:p-2">
+        <button
+						type="button"
+						onClick={() => setShowDetailsModal(false)}
+						className="absolute right-4 top-4  z-50 rounded-sm  hover:opacity-100"
+					>
+						<X className="h-5 w-5 text-white"  />
+					</button>
           {detailsEvent && (
             <>
               <div className="relative h-40 sm:h-64">

@@ -76,6 +76,7 @@ import EventsList from "./pages/EventsList";
 import MappedEvents from "./pages/MappedEvents";
 import Highlights from "./pages/Highlights";
 import Press from "./pages/Press";
+// import CookiePopup from "./components/CookiePopup";
 
 const queryClient = new QueryClient();
 
