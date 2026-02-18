@@ -413,6 +413,7 @@ export default function AddEvent() {
 };
 
     let response;
+    const token = localStorage.getItem("token");
 
     if (editMode && selectedEvent?.id) {
       // Update existing event
@@ -421,9 +422,9 @@ export default function AddEvent() {
         `${import.meta.env.VITE_API_URL}/event/updateEvents/${selectedEvent.id}`,
         payload,
         {
-          headers: {"Content-Type": "multipart/form-data",},
+          headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${token}` },
         }
-		
+
       );
 	  navigate("/events/all")
 
@@ -433,7 +434,7 @@ export default function AddEvent() {
         `${import.meta.env.VITE_API_URL}/createEvents`,
         payload,
         {
-          headers: { "Content-Type": "multipart/form-data",},
+          headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${token}` },
         }
       );
     }
@@ -527,9 +528,10 @@ export default function AddEvent() {
 		if (!detailsEvent?.id) return;
 
 		try {
+			const token = localStorage.getItem("token");
 			await axios.delete(
 				`${import.meta.env.VITE_API_URL}/event/deleteEvent/${detailsEvent.id}`,
-				{ withCredentials: true },
+				{ headers: { Authorization: `Bearer ${token}` } },
 			);
 
 			setEvents((prev) => {
@@ -559,9 +561,10 @@ export default function AddEvent() {
 		if (!user?.id) return;
 
 		try {
+			const token = localStorage.getItem("token");
 			const res = await axios.get(
 				`${import.meta.env.VITE_API_URL}/event/user/${user.id}`,
-				{ withCredentials: true },
+				{ headers: { Authorization: `Bearer ${token}` } },
 			);
 
 			console.log("Raw events from backend:", res.data.events);

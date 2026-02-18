@@ -21,10 +21,10 @@ const BrandGuidelines = () => {
     const fadeOffset = Math.max(0, 1 - scrollY * 0.001);
 
     const images = [
-      { title: "Signage", image: "/Assets/WSW_banner.jpg" },
-      { title: "Social Media", image: "/Assets/WSW_twitter.png" },
-      { title: "Business Cards", image: "/Assets/WSW_businesscard.jpg" },
-      { title: "Apparel", image: "/Assets/WSW_shirt.jpg" },
+      { title: "Signage", image: "/assets/WSW_banner.jpg" },
+      { title: "Social Media", image: "/assets/WSW_twitter.png" },
+      { title: "Business Cards", image: "/assets/WSW_businesscard.jpg" },
+      { title: "Apparel", image: "/assets/WSW_shirt.jpg" },
     ]
 
   return (

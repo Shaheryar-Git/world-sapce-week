@@ -68,13 +68,14 @@ const NationalCoordinatorForm = () => {
 		});
 
 		try {
+			const token = localStorage.getItem("token");
 			const response = await axios.post(
 				`${import.meta.env.VITE_API_URL}/coordinatorForm`,
 				formData,
 				{
-					withCredentials: true,
 					headers: {
 						"Content-Type": "multipart/form-data",
+						Authorization: `Bearer ${token}`,
 					},
 				}
 			);

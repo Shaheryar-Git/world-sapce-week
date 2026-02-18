@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import Cookies from "js-cookie";
 
 interface User {
 	id:String;
@@ -45,10 +44,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 	const fetchSession = async () => {
 		try {
+			const token = localStorage.getItem("token");
+			if (!token) {
+				setUser(null);
+				setIsLoading(false);
+				return;
+			}
 			const res = await fetch(`${import.meta.env.VITE_API_URL}/me`, {
-				credentials: "include",
 				headers: {
 					"Content-Type": "application/json",
+					Authorization: `Bearer ${token}`,
 				},
 			});
 			if (res.ok) {
@@ -62,6 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				}
 			} else if (res.status === 401) {
 				console.warn("Unauthorized: No active session");
+				localStorage.removeItem("token");
 				setUser(null);
 			} else {
 				console.warn("Session check failed with status:", res.status);
@@ -85,13 +91,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		try {
 			const res = await fetch(`${import.meta.env.VITE_API_URL}/login`, {
 				method: "POST",
-				credentials: "include",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ email, password }),
 			});
 			if (!res.ok) throw new Error("Login failed");
+			const data = await res.json();
+			localStorage.setItem("token", data?.token || "");
 			await fetchSession();
-			console.log("login res...", res);
 			return true;
 		} catch (err) {
 			console.error("Login error:", err);
@@ -114,7 +120,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				{
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
-					credentials: "include",
 					body: JSON.stringify({ name, email, password, registerAs }),
 				}
 			);
@@ -128,7 +133,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			}
 			const data = await res.json();
 			console.log("Signup data:", data);
-			Cookies.set("token", data?.token || "", { expires: 7 });
+			localStorage.setItem("token", data?.token || "");
 			await fetchSession();
 			return { state: true, message: "Signup successful" };
 		} catch (err) {
@@ -141,17 +146,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 	const logout = async () => {
 		try {
-			const res = await fetch(`${import.meta.env.VITE_API_URL}/logout`, {
+			const token = localStorage.getItem("token");
+			await fetch(`${import.meta.env.VITE_API_URL}/logout`, {
 				method: "POST",
-				credentials: "include",
+				headers: {
+					Authorization: `Bearer ${token}`,
+				},
 			});
-			if (res.ok) {
-				Cookies.remove("token"); // Clear token cookie
-			}
 		} catch (err) {
 			console.error("Logout failed:", err);
 		} finally {
-			setUser(null); // Ensure user is cleared
+			localStorage.removeItem("token");
+			setUser(null);
 		}
 	};
 

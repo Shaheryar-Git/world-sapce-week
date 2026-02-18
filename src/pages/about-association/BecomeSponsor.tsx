@@ -11,7 +11,7 @@ const BecomeSponsor = () => {
 
             <section className="relative h-[110vh] w-full overflow-hidden flex items-center justify-center">
 				<img
-					src="/Assets/Sponsor-Page.jpg"
+					src="/assets/Sponsor-Page.jpg"
 					alt="Become a Sponsor"
 					className="absolute inset-0 w-full h-full object-cover"
 				/>

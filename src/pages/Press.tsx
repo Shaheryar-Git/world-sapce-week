@@ -3,23 +3,23 @@ import Footer from "@/components/Footer";
 import { Newspaper, Download, Users, Globe, Activity } from "lucide-react";
 import ParticlesBackground from "@/components/ParticlesBackground";
 
-const mediaAssets = [
+const mediaassets = [
   {
     id: 1,
     title: "Click here to download WSW Logos",
-    image: "Assets/wsw-logos-page-banner-1.jpg", // Replace with your logo image path
+    image: "assets/wsw-logos-page-banner-1.jpg", // Replace with your logo image path
     link: "/hold-event/media-kit/logos",
   },
   {
     id: 2,
     title: "Click here to download WSW Poster",
-    image: "Assets/New-Project-62.png", // Replace with your poster image path
+    image: "assets/New-Project-62.png", // Replace with your poster image path
     link: "/hold-event/poster",
   },
   {
     id: 3,
     title: "Latest Press Releases",
-    image: "Assets/Mexico-Image-in-2019-02-Press-Release.jpg", // Replace with your poster image path
+    image: "assets/Mexico-Image-in-2019-02-Press-Release.jpg", // Replace with your poster image path
     link: "/media/news",
   },
 ];
@@ -84,15 +84,15 @@ const Press = () => {
         </div>
       </section>
 
-      {/* Media Assets Section */}
+      {/* Media assets Section */}
       <section className="py-20 bg-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl font-bold text-[#220536] text-center mb-12">
-            Media Assets
+            Media assets
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-            {mediaAssets.map((asset) => (
+            {mediaassets.map((asset) => (
               <div
                 key={asset.id}
                 className="rounded-2xl overflow-hidden shadow-md bg-gray-50 hover:shadow-xl transition-all"

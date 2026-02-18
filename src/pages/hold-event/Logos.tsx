@@ -11,7 +11,7 @@ const Logos = () => {
       {/* Hero Section */}
       <section className="relative h-[60vh] w-full">
         <img
-         src="/Assets/wsw-logos-page-banner.jpg"
+         src="/assets/wsw-logos-page-banner.jpg"
           alt="World Space Week Logos Hero"
           // layout="fill"
           // objectFit="cover"

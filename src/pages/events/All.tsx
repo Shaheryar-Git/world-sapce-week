@@ -94,9 +94,10 @@ export default function AllEvents() {
 		if (!user?.id) return;
 
 		try {
+			const token = localStorage.getItem("token");
 			const res = await axios.get(
 				`${import.meta.env.VITE_API_URL}/event/user/${user.id}`,
-				{ withCredentials: true },
+				{ headers: { Authorization: `Bearer ${token}` } },
 			);
 
 			console.log("Raw events from backend:", res.data.events);
@@ -157,9 +158,10 @@ export default function AllEvents() {
     if (!detailsEvent?.id) return;
 
     try {
+      const token = localStorage.getItem("token");
       await axios.delete(
         `${import.meta.env.VITE_API_URL}/event/deleteEvent/${detailsEvent.id}`,
-        { withCredentials: true },
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
       setEvents((prev) => {

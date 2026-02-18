@@ -17,13 +17,13 @@ import Footer from "@/components/Footer";
 const SocialMediaKit = () => {
 	const worldSpaceCard = [
 		{
-			image: "/Assets/New-Project-28-1.png",
+			image: "/assets/New-Project-28-1.png",
 			title: "I'm Celebrating World Space Week!",
 			color: "from-[#9326E0] to-[#8c38c7]",
 			change: "Customize it for your event",
 		},
 		{
-			image: "/Assets/New-Project-28-1.png",
+			image: "/assets/New-Project-28-1.png",
 			title: "We're Celebrating World Space Week!",
 			color: "from-[#8c38c7] to-[#9326E0]",
 			change: "Customize it for your event",
@@ -90,7 +90,7 @@ const SocialMediaKit = () => {
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 					<div className="text-center mb-16">
 						<h2 className="text-3xl sm:text-4xl font-bold text-[#204d74] mb-6">
-							Official WSW 2025 Visual Assets
+							Official WSW 2025 Visual assets
 						</h2>
 						<div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-[#9326E0] to-[#8c38c7] mx-auto mb-8"></div>
 						<p className="text-xl text-gray-600 max-w-3xl mx-auto">

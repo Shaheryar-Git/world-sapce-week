@@ -10,25 +10,25 @@ const HonoraryChair = () => {
 		{
 			name: "Eren Ozmen",
 			title: "Chairwoman and Owner, Sierra Nevada Corporation,",
-			image: "/Assets/eren-ozmen (1).jpg",
+			image: "/assets/eren-ozmen (1).jpg",
 			achievements: ["WSW 2023 Space and Entrepreneurship"],
 		},
 		{
 			name: "Nobu Okada",
 			title: "Nobu Okada, Founder and CEO, Astroscale",
-			image: "/Assets/4-1.jpg",
+			image: "/assets/4-1.jpg",
 			achievements: ["WSW 2022 Space and Sustainability"],
 		},
 		{
 			name: "Lisa Callahan",
 			title: "Vice President and General Manager of Commercial Civil Space, Lockheed Martin Corporation,",
-			image: "/Assets/3-2.jpg",
+			image: "/assets/3-2.jpg",
 			achievements: ["WSW 2021 Women in Space"],
 		},
 		{
 			name: "Steve Collar",
 			title: "CEO, SES",
-			image: "/Assets/2-4.jpg",
+			image: "/assets/2-4.jpg",
 			achievements: ["WSW 2020 Satellites Improve Life"],
 		},
 	];
@@ -80,7 +80,7 @@ const HonoraryChair = () => {
 											<div className="bg-primary/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:bg-primary/30 transition-colors">
 												<video
 													className="w-full object-cover shadow-lg"
-													src="/Assets/Peter-Platzer-Spire-1.mp4"
+													src="/assets/Peter-Platzer-Spire-1.mp4"
 													controls
 													autoPlay
 													loop

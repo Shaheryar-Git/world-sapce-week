@@ -79,7 +79,7 @@ const MediaKit = () => {
           <div className="flex flex-col sm:flex-row gap-6 justify-center animate-scale-in">
             <button className="btn-primary">
               <Download className="w-5 h-5 mr-2" />
-              Download All Assets
+              Download All assets
             </button>
             <button className="btn-secondary">
               <FileText className="w-5 h-5 mr-2" />

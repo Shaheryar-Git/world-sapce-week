@@ -11,47 +11,47 @@ const OfficersStaff = () => {
   {
     name: "Dennis Stone",
     title: "President and Treasurer",
-    image: "/Assets/1-1-1.jpg"
+    image: "/assets/1-1-1.jpg"
   },
   {
     name: "Laura Champion",
     title: "Executive Vice President",
-    image: "/Assets/10-3.jpg"
+    image: "/assets/10-3.jpg"
   },
   {
     name: "Alma Okpalefe",
     title: "Executive Director",
-    image: "/Assets/Alma-Bio.jpg"
+    image: "/assets/Alma-Bio.jpg"
   },
   {
     name: "Amy Del Prado",
     title: "Treasurer, VP of Development",
-    image: "/Assets/1718224214961-1.jpg"
+    image: "/assets/1718224214961-1.jpg"
   },
   {
     name: "Lauren Payne",
     title: "Secretary and Legal Counsel",
-    image: "/Assets/1-6.jpg"
+    image: "/assets/1-6.jpg"
   },
   {
     name: "Ilayda Edali",
     title: "Operations and Communications Manager",
-    image: "/Assets/3-5.jpg"
+    image: "/assets/3-5.jpg"
   },
   {
     name: "Deborah Faboade",
     title: "PR Coordinator",
-    image: "/Assets/Ricaria_Sutton-1-1.png"
+    image: "/assets/Ricaria_Sutton-1-1.png"
   },
   {
     name: "Rebah Tanvir",
     title: "Communications Coordinator",
-    image: "/Assets/rebah.jpg"
+    image: "/assets/rebah.jpg"
   },
   {
     name: "Ricaria Jenae Sutton",
     title: "Social Media Coordinator",
-    image: "/Assets/deborah.jpg"
+    image: "/assets/deborah.jpg"
   }
 ];
 

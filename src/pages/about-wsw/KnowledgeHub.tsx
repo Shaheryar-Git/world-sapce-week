@@ -108,7 +108,7 @@ const [scrollY] = useState(0);
               <h3 className="text-xl font-bold text-white mb-4 text-center">Downloads</h3>
               <p className="text-gray-300 text-center mb-6">Posters, templates, and promotional materials</p>
               <button className="w-full bg-gradient-to-r from-[#8c38c7] to-[#9326E0] hover:from-[#9326E0] hover:to-[#8c38c7] text-white py-3 px-4 rounded-xl font-medium transition-all duration-300 transform hover:scale-105">
-                Download Assets
+                Download assets
               </button>
             </div>
           </div>
