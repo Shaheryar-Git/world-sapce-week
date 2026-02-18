@@ -15,13 +15,15 @@ import {
   Users,
   Rocket,
   Star,
+  Plus,
 } from "lucide-react";
 import ParticlesBackground from "@/components/ParticlesBackground";
 import { toast } from "sonner";
 import axios from "axios";
 import { useAuth } from "@/context/AuthProvider";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { motion, useScroll, useTransform, Variants } from "framer-motion";
 
 
 const LOCAL_STORAGE_KEY = "wsw_events";
@@ -185,7 +187,7 @@ export default function AllEvents() {
     navigate("/events/add", { state: { eventToEdit: detailsEvent, scrollToEdit: true } });
   };
 
-  const parallaxOffset = scrollY * 0.3;
+  // const parallaxOffset = scrollY * 0.3;
   const fadeOffset = Math.max(0, 1 - scrollY * 0.001);
 
   const filteredEvents = events.filter((event) => {
@@ -207,41 +209,102 @@ export default function AllEvents() {
     );
   });
 
+  
+    const { scrollYProgress } = useScroll();
+    // const parallaxOffset = useTransform(scrollYProgress, [0, 1], [0, 100]);
+    const scaleProgress = useTransform(scrollYProgress, [0, 1], [0.85, 1]);
+    const opacityProgress = useTransform(scrollYProgress, [0, 1], [0.95, 1]);
+
+    const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 50 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.6,
+      ease: "easeOut",
+    },
+  },
+};
+
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.2,
+    },
+  },
+};
+
   return (
     <div className="min-h-screen bg-[#220536]">
       <Navigation />
       {/* Hero Section */}
-      <section className="relative py-16 sm:py-20 md:py-32 hero-gradient overflow-hidden">
-        <div className="hero-particles">
-          <div
-            className="absolute inset-0 hero-gradient"
-            style={{ transform: `translateY(${parallaxOffset}px)` }}
+     <motion.section
+        className="relative min-h-[70vh] flex items-center py-20 hero-gradient"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1.2 }}
+      >
+        <div className="absolute inset-0 overflow-hidden">
+          <motion.div
+            className="absolute inset-0 bg-gradient-to-br from-[#170324]/20 to-[#170324]/20"
+            // style={{ y: parallaxOffset }}
+            transition={{ ease: "easeOut", duration: 1.5 }}
           />
-          <ParticlesBackground scrollY={scrollY} count={100} /> {/* Reduced count for mobile */}
-          <div className="absolute top-4 left-4 w-16 h-16 sm:w-24 sm:h-24 md:w-32 md:h-32 bg-[#9327e0]/10 rounded-full blur-md sm:blur-xl animate-pulse" />
-          <div className="absolute bottom-8 right-4 w-20 h-20 sm:w-32 sm:h-32 md:w-40 md:h-40 bg-[#204d74]/10 rounded-full blur-lg sm:blur-2xl animate-pulse delay-1000" />
+          <ParticlesBackground scrollY={scrollY} count={250} />
+          <motion.div
+            className="absolute top-16 left-8 w-40 h-40 bg-[#170324]/15 rounded-full blur-2xl"
+            animate={{ scale: [1, 1.25, 1] }}
+            transition={{ repeat: Infinity, duration: 3.5 }}
+          />
+          <motion.div
+            className="absolute bottom-24 right-12 w-48 h-48 bg-[#170324]/15 rounded-full blur-3xl"
+            animate={{ scale: [1, 1.35, 1] }}
+            transition={{ repeat: Infinity, duration: 4.5, delay: 1.5 }}
+          />
         </div>
-
-        <div
-          className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center"
-          style={{ opacity: fadeOffset, transform: `translateY(${scrollY * 0.1}px)` }}
+        <motion.div
+          className="relative z-10 container mx-auto px-6"
+          style={{ scale: scaleProgress, opacity: opacityProgress }}
         >
-          <div className="inline-flex items-center gap-2 sm:gap-3 glass rounded-full px-4 sm:px-6 py-2 sm:py-3 mb-6 sm:mb-8 hover:bg-white/10 transition-all duration-500 group">
-            <Rocket className="w-4 sm:w-5 h-4 sm:h-5 text-[#9327e0] group-hover:rotate-12 transition-transform duration-500" />
-            <span className="text-white text-sm sm:text-lg font-medium">Explore All Events</span>
-            <Star className="w-4 sm:w-5 h-4 sm:h-5 text-[#9327e0] group-hover:-rotate-12 transition-transform duration-500" />
-          </div>
-
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 sm:mb-8 leading-tight animate-fade-in-up">
-            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#9327e0] to-[#204d74]">
-              World Space Week Events
-            </span>
-          </h1>
-          <p className="text-base sm:text-lg md:text-xl text-gray-300 max-w-3xl sm:max-w-4xl mx-auto leading-relaxed mb-8 sm:mb-12 animate-fade-in-up">
-            Discover and participate in thousands of space events happening worldwide during World Space Week
-          </p>
-        </div>
-      </section>
+          <motion.div
+            className="max-w-5xl mx-auto text-center"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            <motion.h1
+              variants={itemVariants}
+              className="text-4xl md:text-6xl lg:text-7xl font-extrabold text-white mb-8 leading-tight"
+            >
+              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#9326E0] to-[#8c38c7] drop-shadow-lg">
+                World Space Week Events
+              </span>
+            </motion.h1>
+            <motion.p
+              variants={itemVariants}
+              className="text-lg md:text-xl text-gray-200 max-w-3xl mx-auto leading-relaxed mb-12"
+            >
+              Discover and participate in thousands of space events happening worldwide during World Space Week.
+            </motion.p>
+            <motion.div
+              variants={itemVariants}
+              className="flex flex-col sm:flex-row gap-4 justify-center"
+            >
+              <Link
+                to="/events/add"
+                className="bg-gradient-to-r from-[#170324] to-[#170324] hover:from-[#2a1a4d] hover:to-[#170324] text-white px-8 py-4 rounded-xl text-base font-semibold transition-all duration-500 flex items-center justify-center gap-3 group hover:shadow-2xl hover:shadow-[#170324]/30 transform hover:scale-105"
+              >
+                <Plus className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" />
+                Add Your Event
+              </Link>
+            </motion.div>
+          </motion.div>
+        </motion.div>
+      </motion.section>
 
       <section className="py-8 sm:py-12">
         <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">

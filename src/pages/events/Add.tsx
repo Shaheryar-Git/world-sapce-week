@@ -332,7 +332,15 @@ export default function AddEvent() {
 		setCurrentEvent(event);
 		setFormStep(0);
 		setShowEventModal(true);
+		navigate("/events/add", { state: { eventToEdit: detailsEvent, scrollToEdit: true } });
 	};
+
+// 	const handleEditEvent = () => {
+//     if (!detailsEvent) return;
+//     setShowDetailsModal(false);
+//     navigate("/events/add", { state: { eventToEdit: detailsEvent, scrollToEdit: true } });
+//   };
+
 
 	
 
