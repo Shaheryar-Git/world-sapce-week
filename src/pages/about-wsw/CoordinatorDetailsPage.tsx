@@ -11,14 +11,7 @@ const CoordinatorDetails = () => {
     (item) => item.id === Number(id)
   );
 
-  if (!coordinator) {
-    return (
-      <div className="text-center text-red-500 text-xl mt-20">
-        Coordinator not found
-      </div>
-    );
-  }
-
+ 
   return (
     <>
       {/* Navigation */}
