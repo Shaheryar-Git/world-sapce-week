@@ -55,11 +55,7 @@ const PastReportsPosters = () => {
 									alt={card.Theme || `Poster ${index + 1}`}
 									className="w-full h-64 object-cover rounded-xl border border-[#3e0f61] transform group-hover:scale-105 transition-transform duration-500"
 								/>
-								<div className="absolute top-0 left-0 w-full h-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl flex items-center justify-center">
-									<p className="text-sm text-gray-200">
-										Click to enlarge
-									</p>
-								</div>
+								
 							</div>
 
 							<div className="flex flex-col justify-between text-center px-2 mt-5">

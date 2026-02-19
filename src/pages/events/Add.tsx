@@ -20,6 +20,7 @@ import {
 	ChevronLeft,
 	ChevronRight,
 	Users,
+	Loader2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthProvider";
@@ -157,6 +158,7 @@ export default function AddEvent() {
 	];
 	countries.registerLocale(enLocale);
 	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+	const [isSaving, setIsSaving] = useState(false);
 	const navigationType = useNavigationType();
 	const navigate = useNavigate();
 
@@ -346,6 +348,7 @@ export default function AddEvent() {
 
 	const handleSaveEvent = async (e) => {
   e.preventDefault();
+  setIsSaving(true);
 
   // Validate all required fields
   const allRequiredFields = [
@@ -379,6 +382,7 @@ export default function AddEvent() {
     return;
   }
   try {
+    
     // Fix: nest address properly (from previous discussion)
    const payload = {
   userId: user.id,
@@ -521,6 +525,8 @@ export default function AddEvent() {
       err.response?.data?.message ||
         (editMode ? "Failed to update event" : "Failed to create event")
     );
+  } finally {
+    setIsSaving(false);
   }
 };
 
@@ -1770,10 +1776,16 @@ const handleDateSelect = (date, field) => {
 									<Button
 										type="submit"
 										className="sm:ml-auto"
+										disabled={isSaving}
 									>
-										{editMode
-											? "Update Event"
-											: "Save Event"}
+										{isSaving ? (
+											<>
+												<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+												{editMode ? "Updating..." : "Saving..."}
+											</>
+										) : (
+											editMode ? "Update Event" : "Save Event"
+										)}
 									</Button>
 								)}
 							</div>

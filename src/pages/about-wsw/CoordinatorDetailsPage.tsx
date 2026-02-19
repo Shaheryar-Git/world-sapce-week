@@ -33,9 +33,9 @@ const CoordinatorDetails = () => {
 
             {/* Profile Image */}
             <img
-              src="/images/profile-placeholder.png"
+              src="/assets/Im-Celebrating-World-Space-Week-WSW2025-Public-480x480.png"
               alt={coordinator.name}
-              className="w-40 h-40 rounded-full object-cover border-4 border-[#9326E0]"
+              className="w-52 h-52  border-4 border-[#9326E0]"
             />
 
             {/* Basic Info */}
@@ -54,8 +54,9 @@ const CoordinatorDetails = () => {
                   alt={coordinator.country}
                   className="w-10 h-10 mr-3"
                 /> */}
+                
                 <span className="text-gray-700 text-lg">
-                  {coordinator.bio}
+                  Lorem ipsum dolor sit amet, consectetur adipisicing elit. Illo tempore possimus officia. Nulla laudantium dicta ad at odit facilis aliquid quod a quis eligendi accusantium veritatis quasi ab, repellendus maxime.
                 </span>
               </div>
             </div>

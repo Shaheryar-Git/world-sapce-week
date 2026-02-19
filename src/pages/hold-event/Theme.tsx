@@ -61,7 +61,7 @@ const Theme = () => {
 						{currentTheme.hashtags.map((hashtag, index) => (
 							<span
 								key={index}
-								className="bg-[#9326E0]/20 text-[#9326E0] px-4 py-2 rounded-full text-sm font-medium border border-[#9326E0]/30"
+								className="bg-[#9326E0]/20 text-white px-4 py-2 rounded-full text-sm font-medium border border-[#9326E0]/30"
 							>
 								{hashtag}
 							</span>

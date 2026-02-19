@@ -19,6 +19,7 @@ const Login = () => {
 	const [showPassword, setShowPassword] = useState(false);
 	const [scrollY, setScrollY] = useState(0);
 	const navigate = useNavigate();
+	const [isLoading, setIsLoading] = useState(false);
 
 	useEffect(() => {
 		if (user) {
@@ -31,8 +32,9 @@ const Login = () => {
     values: FormValues,
     { setSubmitting }: FormikHelpers<FormValues>
   ) => {
+    setIsLoading(true);
     try {
-      const success = await login(values.email, values.password); // Pass email and password
+      const success = await login(values.email, values.password);
       if (success) {
         toast.success("Logged in successfully!");
         navigate("/");
@@ -43,6 +45,7 @@ const Login = () => {
       console.error("Login error:", err);
       toast.error(err.message || "Failed to login");
     } finally {
+      setIsLoading(false);
       setSubmitting(false);
     }
   };
@@ -105,7 +108,7 @@ const Login = () => {
 							validationSchema={LoginSchema}
 							onSubmit={handleLogin}
 						>
-							{({ errors, touched, isSubmitting }) => (
+							{({ errors, touched }) => (
 								<Form className="space-y-6">
 									<div>
 										<label className="block text-sm font-medium text-white mb-2">
@@ -195,9 +198,9 @@ const Login = () => {
 									<button
 										type="submit"
 										className="btn-primary w-full"
-										disabled={isSubmitting}
+										disabled={isLoading}
 									>
-										Sign In
+										{isLoading ? "Signing in..." : "Sign In"}
 									</button>
 								</Form>
 							)}
