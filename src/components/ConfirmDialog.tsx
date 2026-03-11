@@ -30,6 +30,7 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
 	const handleConfirm = async () => {
 		await onConfirm();
+		onOpenChange(false);
 	};
 
 	return (

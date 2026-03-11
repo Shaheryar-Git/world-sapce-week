@@ -63,10 +63,15 @@ const initialEvent = {
 	publicEmail: "",
 	publicPhone: "",
 	organizationName: "",
-	eventWebAddress: "http://www.",
-	year: "2025",
+	eventWebAddress: "",
+	year: "",
 	physicalEvent: true,
-	eventType: "Public Event",
+	eventFormat: "",
+	eventType: "",
+	attendanceType: "Public",
+	organizerType: "",
+	affiliatedOrganizations: [] as string[],
+	affiliatedOrganizationsOther: "",
 	startEndType: "Starts During WSW",
 	country: "",
 	stateProvince: "",
@@ -74,9 +79,9 @@ const initialEvent = {
 	address: "",
 	streetAddress: "",
 	locationName: "",
-	startDate: getLocalDateString(new Date()),
+	startDate: "",
 	startTime: "09:00",
-	endDate: getLocalDateString(new Date()),
+	endDate: "",
 	endTime: "17:00",
 	eventTitle: "",
 	eventDescription: "",
@@ -146,19 +151,25 @@ export default function AddEvent() {
 	const [scrollY, setScrollY] = useState(0);
 	const [showStartPicker, setShowStartPicker] = useState(false);
 	const [showEndPicker, setShowEndPicker] = useState(false);
+	const [locationQuery, setLocationQuery] = useState("");
+	const [locationSuggestions, setLocationSuggestions] = useState<any[]>([]);
+	const [showSuggestions, setShowSuggestions] = useState(false);
+	const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+	const locationDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const mapGeoDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const mapRef = useRef(null);
 	const mapContainerRef = useRef(null);
 	const markerRef = useRef(null);
 	const existingMarkersRef = useRef([]);
 	const { user } = useAuth();
 	const location = useLocation();
-	const countryList = [
-		"All Countries",
-		...Object.values(countries.getNames("en", { select: "official" })),
-	];
 	countries.registerLocale(enLocale);
+	const countryList = [
+		...Object.values(countries.getNames("en", { select: "official" })).sort((a, b) => a.localeCompare(b)),
+	];
 	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 	const [isSaving, setIsSaving] = useState(false);
+	const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 	const navigationType = useNavigationType();
 	const navigate = useNavigate();
 
@@ -348,18 +359,17 @@ export default function AddEvent() {
 
 	const handleSaveEvent = async (e) => {
   e.preventDefault();
-  setIsSaving(true);
 
-  // Validate all required fields
+  // Validate all required fields BEFORE setting loading state
+  const needsLocation = currentEvent.eventFormat !== "Online / Virtual";
   const allRequiredFields = [
     "publicContactName",
     "publicEmail",
     "publicPhone",
-    "organizationName",
     "eventWebAddress",
     "eventType",
     "startEndType",
-    ...(currentEvent.physicalEvent
+    ...(needsLocation
       ? ["country", "stateProvince", "city", "address", "locationName"]
       : []),
     "startDate",
@@ -381,6 +391,8 @@ export default function AddEvent() {
     toast.error(`Please fill in: ${missingFields.join(", ")}`);
     return;
   }
+
+  setIsSaving(true);
   try {
     
     // Fix: nest address properly (from previous discussion)
@@ -623,6 +635,88 @@ export default function AddEvent() {
 		}));
 	};
 
+	const handleLocationSearch = (query: string) => {
+		setLocationQuery(query);
+		if (locationDebounceRef.current) clearTimeout(locationDebounceRef.current);
+		if (!query.trim()) {
+			setLocationSuggestions([]);
+			setShowSuggestions(false);
+			return;
+		}
+		locationDebounceRef.current = setTimeout(async () => {
+			setIsFetchingLocation(true);
+			try {
+				const res = await fetch(
+					`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=6`,
+					{ headers: { "Accept-Language": "en" } }
+				);
+				const data = await res.json();
+				setLocationSuggestions(data);
+				setShowSuggestions(true);
+			} catch {
+				setLocationSuggestions([]);
+			} finally {
+				setIsFetchingLocation(false);
+			}
+		}, 400);
+	};
+
+	const geocodeAndMoveMap = (query: string, zoomLevel: number) => {
+		if (query.trim().length===0 || mapRef.current==null) return;
+		if (mapGeoDebounceRef.current) clearTimeout(mapGeoDebounceRef.current);
+		mapGeoDebounceRef.current = setTimeout(async () => {
+			if (mapRef.current==null) return;
+			try {
+				const res = await fetch(
+					`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
+					{ headers: { "Accept-Language": "en" } }
+				);
+				const data = await res.json();
+				if (data[0]) {
+					const lat = parseFloat(data[0].lat);
+					const lng = parseFloat(data[0].lon);
+					if (isNaN(lat)===false && isNaN(lng)===false && mapRef.current) {
+						mapRef.current.setView([lat, lng], zoomLevel);
+					}
+				}
+			} catch {}
+		}, 400);
+	};
+	const handleSelectSuggestion = (place: any) => {
+		const addr = place.address || {};
+		const streetAddress = [addr.house_number].filter(Boolean).join(" ") || place.display_name.split(",")[0];
+		const lat = parseFloat(place.lat);
+		const lng = parseFloat(place.lon);
+
+		setCurrentEvent((prev) => ({
+			...prev,
+			// Only update country if user hasn't filled it in yet
+			...(prev.country.trim() === "" && { country: addr.country || "" }),
+			// Only update city if user hasn't filled it in yet
+			...(prev.city.trim() === "" && { city: addr.city || addr.town || addr.village || "" }),
+			// Only update stateProvince if user hasn't filled it in yet
+			...(prev.stateProvince.trim() === "" && { stateProvince: addr.state || "" }),
+			address: streetAddress,
+			streetAddress,
+			locationName: place.display_name.split(",")[0],
+			latitude: lat,
+			longitude: lng,
+		}));
+
+		setShowSuggestions(false);
+
+		// Move the map marker and zoom to the selected location
+		if (mapRef.current && !isNaN(lat) && !isNaN(lng)) {
+			const zoomLevel = addr.country && !addr.city && !addr.state ? 5 : addr.state && !addr.city ? 8 : 14;
+			mapRef.current.setView([lat, lng], zoomLevel);
+			if (markerRef.current) {
+				markerRef.current.setLatLng([lat, lng]);
+			} else {
+				markerRef.current = L.marker([lat, lng]).addTo(mapRef.current);
+			}
+		}
+	};
+
 const handleDateSelect = (date, field) => {
 		if (!date) {
 			setCurrentEvent((prev) => ({ ...prev, [field]: "" }));
@@ -698,6 +792,40 @@ const handleDateSelect = (date, field) => {
 		"December",
 	];
 
+	const formatDateForDisplay = (dateStr: string) => {
+		if (!dateStr) return "";
+		const [year, month, day] = dateStr.split("-");
+		return `${day}/${month}/${year}`;
+	};
+
+	const affiliationOptions = [
+		"None / Not affiliated",
+		"Space Generation Advisory Council (SGAC)",
+		"International Astronomical Union (IAU)",
+		"Astronomers Without Borders (AWB)",
+		"Asteroid Day",
+		"International Observe the Moon Night (InOMN)",
+		"International Moon Day",
+		"Planetary Society",
+		"Europlanet Society",
+		"International Rocketry Organizations (Tripoli / NAR Sections)",
+		"Global Space Education Foundation",
+		"Space Education Outreach Network (SEON)",
+		"Women in Aerospace",
+		"Space Settlement Institute",
+		"Other (please specify)",
+	];
+
+	const handleAffiliationChange = (value: string) => {
+		setCurrentEvent((prev) => {
+			const current: string[] = (prev.affiliatedOrganizations as string[]) || [];
+			const updated = current.includes(value)
+				? current.filter((v) => v !== value)
+				: [...current, value];
+			return { ...prev, affiliatedOrganizations: updated };
+		});
+	};
+
 	const generateTimeOptions = () => {
 		const times = [];
 		for (let hour = 0; hour < 24; hour++) {
@@ -717,18 +845,17 @@ const handleDateSelect = (date, field) => {
 				? [
 						"publicContactName",
 						"publicEmail",
-						"publicPhone",
-						"organizationName",
+						"year",
+						...(currentEvent.attendanceType === "Public" ? ["publicPhone"] : []),
 						"eventType",
-						"startEndType",
+	
 					]
 				: formStep === 1
 					? [
-							currentEvent.physicalEvent ? "country" : null,
-							currentEvent.physicalEvent ? "stateProvince" : null,
-							currentEvent.physicalEvent ? "city" : null,
-							currentEvent.physicalEvent ? "address" : null,
-							currentEvent.physicalEvent ? "locationName" : null,
+							currentEvent.eventFormat !== "Online / Virtual" ? "country" : null,
+							currentEvent.eventFormat !== "Online / Virtual" ? "stateProvince" : null,
+							currentEvent.eventFormat !== "Online / Virtual" ? "city" : null,
+							currentEvent.eventFormat !== "Online / Virtual" ? "locationName" : null,
 						].filter(Boolean)
 					: [
 							"startDate",
@@ -747,13 +874,22 @@ const handleDateSelect = (date, field) => {
 			toast.error("Please fill in all required fields before proceeding");
 			return;
 		}
+		if (
+			formStep === 1 &&
+			currentEvent.eventFormat !== "Online / Virtual" &&
+			(!currentEvent.latitude || !currentEvent.longitude)
+		) {
+			toast.error("Please place a pin on the map to mark the event location");
+			return;
+		}
 		setFormStep(formStep + 1);
 	};
 
 	const handleCancel = () => {
-		setShowEventModal(false);
+		setShowEventModal(true);
 		setCurrentEvent(initialEvent);
 		setFormStep(0);
+
 	};
 
 	useEffect(() => {
@@ -848,6 +984,7 @@ const handleDateSelect = (date, field) => {
 		};
 	}, [
 		formStep,
+		currentEvent.eventFormat,
 		currentEvent.locationName,
 		currentEvent.city,
 		currentEvent.stateProvince,
@@ -962,6 +1099,7 @@ const handleDateSelect = (date, field) => {
 							{formStep === 0 && (
 								<div className="space-y-6 animate-fade-in">
 									<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+										{/* Public Contact Name */}
 										<div className="space-y-1">
 											<Label htmlFor="publicContactName">
 												Public Contact Name{" "}
@@ -984,6 +1122,8 @@ const handleDateSelect = (date, field) => {
 												<User className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
 											</div>
 										</div>
+
+										{/* Public Email */}
 										<div className="space-y-1">
 											<Label htmlFor="publicEmail">
 												Public Email{" "}
@@ -1007,35 +1147,11 @@ const handleDateSelect = (date, field) => {
 												<Mail className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
 											</div>
 										</div>
-										<div className="space-y-1">
-											<Label htmlFor="publicPhone">
-												Public Phone{" "}
-												<span className="text-red-500">
-													*
-												</span>
-											</Label>
-											<div className="relative">
-												<Input
-													id="publicPhone"
-													name="publicPhone"
-													type="tel"
-													value={
-														currentEvent.publicPhone
-													}
-													onChange={handleChange}
-													placeholder="(123) 456-7890"
-													required
-													className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0]"
-												/>
-												<Phone className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-											</div>
-										</div>
+
+										{/* Organization Name */}
 										<div className="space-y-1">
 											<Label htmlFor="organizationName">
-												Organization Name{" "}
-												<span className="text-red-500">
-													*
-												</span>
+												Organization Name
 											</Label>
 											<div className="relative">
 												<Input
@@ -1052,64 +1168,34 @@ const handleDateSelect = (date, field) => {
 												<Building className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
 											</div>
 										</div>
+
+										{/* Year */}
 										<div className="space-y-1">
-											<Label htmlFor="eventWebAddress">
-												Event Web Address{" "}
-												<span className="text-red-500">
-													*
-												</span>
-											</Label>
+											<Label htmlFor="year">Year</Label>
+											<span className="text-red-500">
+												*
+											</span>
 											<div className="relative">
 												<Input
-													id="eventWebAddress"
-													name="eventWebAddress"
-													type="url"
-													value={
-														currentEvent.eventWebAddress
-													}
+													id="year"
+													name="year"
+													type="text"
+													value={currentEvent.year}
 													onChange={handleChange}
-													placeholder="http://www.example.com"
+													placeholder="Enter Year"
 													className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0]"
 												/>
 												<Globe className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
 											</div>
 										</div>
-										<div className="space-y-1">
-											<Label htmlFor="year">Year</Label>
-											<Select
-												value={currentEvent.year}
-												onValueChange={(val) =>
-													handleChange({
-														target: {
-															name: "year",
-															value: val,
-															type: "select-one",
-														},
-													})
-												}
-											>
-												<SelectTrigger
-													id="year"
-													className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0]"
-												>
-													<SelectValue placeholder="Select year" />
-												</SelectTrigger>
-												<SelectContent>
-													<SelectItem value="2024">
-														2024
-													</SelectItem>
-													<SelectItem value="2025">
-														2025
-													</SelectItem>
-													<SelectItem value="2026">
-														2026
-													</SelectItem>
-												</SelectContent>
-											</Select>
-										</div>
+
+										{/* Event Type */}
 										<div className="space-y-1">
 											<Label htmlFor="eventType">
-												Event Type
+												Event Type{" "}
+												<span className="text-red-500">
+													*
+												</span>
 											</Label>
 											<Select
 												value={currentEvent.eventType}
@@ -1130,12 +1216,6 @@ const handleDateSelect = (date, field) => {
 													<SelectValue placeholder="Select event type" />
 												</SelectTrigger>
 												<SelectContent>
-													<SelectItem value="Public Event">
-														Public Event
-													</SelectItem>
-													<SelectItem value="Private Event">
-														Private Event
-													</SelectItem>
 													<SelectItem value="Conference">
 														Conference
 													</SelectItem>
@@ -1145,7 +1225,7 @@ const handleDateSelect = (date, field) => {
 													<SelectItem value="Webinar">
 														Webinar
 													</SelectItem>
-				
+
 													<SelectItem value="School Activity">
 														School Activity
 													</SelectItem>
@@ -1162,19 +1242,23 @@ const handleDateSelect = (date, field) => {
 														Exhibition / Display
 													</SelectItem>
 													<SelectItem value="Outreach / Community Event">
-														Outreach / Community Event
+														Outreach / Community
+														Event
 													</SelectItem>
 													<SelectItem value="Observatory / Stargazing Event">
-														Observatory / Stargazing Event
+														Observatory / Stargazing
+														Event
 													</SelectItem>
 													<SelectItem value="Online Event (webinar, livestream)">
-														Online Event (webinar, livestream)
+														Online Event (webinar,
+														livestream)
 													</SelectItem>
 													<SelectItem value="Competition / Challenge">
 														Competition / Challenge
 													</SelectItem>
 													<SelectItem value="Rocket Launch Event or Space Mission">
-														Rocket Launch Event or Space Mission
+														Rocket Launch Event or
+														Space Mission
 													</SelectItem>
 													<SelectItem value="Other">
 														Other
@@ -1182,422 +1266,735 @@ const handleDateSelect = (date, field) => {
 												</SelectContent>
 											</Select>
 										</div>
+
+										{/* NEW: Attendance Type – Dropdown */}
 										<div className="space-y-1">
-											<Label htmlFor="startEndType">
-												Start/End Type
+											<Label htmlFor="attendanceType">
+												Attendance Type{" "}
+												<span className="text-red-500">
+													*
+												</span>
 											</Label>
 											<Select
 												value={
-													currentEvent.startEndType
+													currentEvent.attendanceType
 												}
-												onValueChange={(val) => {
+												onValueChange={(val) =>
 													handleChange({
 														target: {
-															name: "startEndType",
+															name: "attendanceType",
 															value: val,
 															type: "select-one",
 														},
-													});
-
-													// If single-day, mirror end date to start date and close picker
-													if (val === "Single Day") {
-														setShowEndPicker(false);
-														setCurrentEvent((prev) => ({
-															...prev,
-															endDate: prev.startDate || "",
-														}));
-													}
-												}}
+													})
+												}
 											>
 												<SelectTrigger
-													id="startEndType"
+													id="attendanceType"
 													className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0]"
 												>
 													<SelectValue placeholder="Select type" />
 												</SelectTrigger>
 												<SelectContent>
-													<SelectItem value="Starts During WSW">
-														Starts During WSW
+													<SelectItem value="Public">
+														Public
 													</SelectItem>
-													<SelectItem value="Single Day">
-														Single Day
-													</SelectItem>
-													<SelectItem value="Multiple Days">
-														Multiple Days
+													<SelectItem value="Private">
+														Private
 													</SelectItem>
 												</SelectContent>
 											</Select>
 										</div>
-										<div className="flex items-center space-x-2 col-span-1 sm:col-span-2 mt-2">
-											<Label htmlFor="physicalEvent">
-												Physical Event{" "}
-											</Label>
-											<input
-												id="physicalEvent"
-												name="physicalEvent"
-												type="checkbox"
-												checked={
-													currentEvent.physicalEvent
-												}
-												onChange={handleChange}
-												className="h-5 w-5 text-[#9327e0] border-gray-300 rounded focus:ring-[#9327e0] ml-2"
-											/>
-											<span className="text-xs text-slate-500">
-												{currentEvent.physicalEvent
-													? "Yes"
-													: "No"}{" "}
-												<span className="text-red-500">
-													*
-												</span>{" "}
-											</span>
+
+										{/* Public Phone + Event Web Address – in one row */}
+										<div className="col-span-1 sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
+											{/* Public Phone – conditional required/disabled */}
+											<div className="space-y-1">
+												<Label htmlFor="publicPhone">
+													Public Phone{" "}
+													{currentEvent.attendanceType ===
+														"Public" && (
+														<span className="text-red-500">
+															*
+														</span>
+													)}
+												</Label>
+												<div className="relative">
+													<Input
+														id="publicPhone"
+														name="publicPhone"
+														type="tel"
+														value={
+															currentEvent.publicPhone
+														}
+														onChange={handleChange}
+														placeholder="(123) 456-7890"
+														required={
+															currentEvent.attendanceType ===
+															"Public"
+														}
+														disabled={
+															currentEvent.attendanceType ===
+															"Private"
+														}
+														className={`w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0] ${
+															currentEvent.attendanceType ===
+															"Private"
+																? "bg-gray-100 cursor-not-allowed opacity-60"
+																: ""
+														}`}
+													/>
+													<Phone className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+												</div>
+											</div>
+
+											{/* Event Web Address – conditional required/disabled */}
+											<div className="space-y-1">
+												<Label htmlFor="eventWebAddress">
+													Event Web Address{" "}
+													{currentEvent.attendanceType ===
+														"Public" && (
+														<span className="text-red-500">
+															*
+														</span>
+													)}
+												</Label>
+												<div className="relative">
+													<Input
+														id="eventWebAddress"
+														name="eventWebAddress"
+														type="url"
+														value={
+															currentEvent.eventWebAddress
+														}
+														onChange={handleChange}
+														placeholder="http://www.example.com"
+														required={
+															currentEvent.attendanceType ===
+															"Public"
+														}
+														disabled={
+															currentEvent.attendanceType ===
+															"Private"
+														}
+														className={`w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0] ${
+															currentEvent.attendanceType ===
+															"Private"
+																? "bg-gray-100 cursor-not-allowed opacity-60"
+																: ""
+														}`}
+													/>
+													<Globe className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+												</div>
+											</div>
 										</div>
 									</div>
 								</div>
 							)}
-							{formStep === 1 &&
-								(currentEvent.physicalEvent ? (
+							{formStep === 1 && (
 								<div className="space-y-6 animate-fade-in">
-									<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-										<div className="space-y-1">
-											<Label htmlFor="country">
-												Country
-												<span className="text-red-500">
-													*
-												</span>
-											</Label>
-											<select
-												id="country"
-												name="country"
-												value={currentEvent.country}
-												onChange={handleChange}
-												required
+									{/* Event Format */}
+									<div className="space-y-1">
+										<Label
+											htmlFor="eventFormat"
+											className="flex items-center gap-2"
+											
+										>
+											Event Format{" "}
+											<span className="text-red-500">
+												*
+											</span>
+											<span
+												title="Select how your event will be held: in-person at a physical location, entirely online, or a combination of both."
+												className="cursor-help text-slate-400 border border-slate-400 rounded-full w-4 h-4 flex items-center justify-center text-xs font-bold"
+											>
+												?
+											</span>
+										</Label>
+										<Select
+											value={
+												currentEvent.eventFormat
+												
+			}
+											onValueChange={(val) =>
+												handleChange({
+													target: {
+														name: "eventFormat",
+														value: val,
+														type: "select-one",
+													},
+												})
+											}
+										>
+											<SelectTrigger
+												id="eventFormat"
 												className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0]"
 											>
-												<option value="" disabled>
-													Select country
-												</option>
-												{countryList.map((country) => (
-													<option
-														key={country}
-														value={country}
+												<SelectValue placeholder="Select event format" />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="In-person (physical location)">
+													In-person (physical
+													location)
+												</SelectItem>
+												<SelectItem value="Online / Virtual">
+													Online / Virtual
+												</SelectItem>
+												<SelectItem value="Hybrid (both in-person and online)">
+													Hybrid (both in-person and
+													online)
+												</SelectItem>
+											</SelectContent>
+										</Select>
+									</div>
+									{currentEvent.eventFormat !==
+										"Online / Virtual" && (
+										<>
+											<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+												<div className="space-y-1">
+													<Label htmlFor="country">
+														Country
+														<span className="text-red-500">
+															*
+														</span>
+													</Label>
+													<select
+														id="country"
+														name="country"
+														value={
+															currentEvent.country
+														}
+														onChange={(e) => {
+															handleChange(e);
+															if (e.target.value)
+																geocodeAndMoveMap(
+																	e.target
+																		.value,
+																	5,
+																);
+														}}
+														required
+														className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0]"
 													>
-														{country}
-													</option>
-												))}
-											</select>
-										</div>
-										<div className="space-y-1">
-											<Label htmlFor="stateProvince">
-												State/Province{" "}
-												<span className="text-red-500">
-													*
-												</span>
-											</Label>
-											<Input
-												id="stateProvince"
-												name="stateProvince"
-												value={
-													currentEvent.stateProvince
-												}
-												onChange={handleChange}
-												placeholder="State or Province"
-												required
-												className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0]"
-											/>
-										</div>
-										<div className="space-y-1">
-											<Label htmlFor="city">
-												City{" "}
-												<span className="text-red-500">
-													*
-												</span>
-											</Label>
-											<Input
-												id="city"
-												name="city"
-												value={currentEvent.city}
-												onChange={handleChange}
-												placeholder="City"
-												required
-												className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0]"
-											/>
-										</div>
-										<div className="space-y-1">
-											<Label htmlFor="address">
-												Address{" "}
-												<span className="text-red-500">
-													*
-												</span>
-											</Label>
-											<Input
-												id="address"
-												name="address"
-												value={currentEvent.address}
-												onChange={handleChange}
-												placeholder="Street Address"
-												required
-												className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0]"
-											/>
-										</div>
-										<div className="col-span-1 sm:col-span-2 space-y-1">
-											<Label htmlFor="locationName">
-												Location Name{" "}
-												<span className="text-red-500">
-													*
-												</span>
-											</Label>
-											<Input
-												id="locationName"
-												name="locationName"
-												value={
-													currentEvent.locationName
-												}
-												onChange={handleChange}
-												placeholder="Convention Center"
-												required
-												className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0]"
-											/>
-										</div>
-									</div>
-									<div className="bg-gradient-to-br from-[#9327e0]/5 to-[#204d74]/5 border-2 border-[#9327e0]/20 rounded-3xl p-6 sm:p-8 lg:p-12 mb-12 sm:mb-16">
-										<h3 className="text-lg sm:text-xl font-bold text-black mb-4">
-											Event Location Map (Click to pin
-											location)
-										</h3>
-										<div
-											ref={mapContainerRef}
-											className="w-full rounded-2xl relative overflow-hidden"
-											style={{
-												height: "70vh",
-												minHeight: "300px",
-												maxHeight: "600px",
-											}}
-										/>
-									</div>
+														<option
+															value=""
+															disabled
+														>
+															Select country
+														</option>
+														{countryList.map(
+															(country) => (
+																<option
+																	key={
+																		country
+																	}
+																	value={
+																		country
+																	}
+																>
+																	{country}
+																</option>
+															),
+														)}
+													</select>
+												</div>
+												<div className="space-y-1">
+													<Label htmlFor="stateProvince">
+														State/Province{" "}
+														<span className="text-red-500">
+															*
+														</span>
+													</Label>
+													<Input
+														id="stateProvince"
+														name="stateProvince"
+														value={
+															currentEvent.stateProvince
+														}
+														onChange={(e) => {
+															handleChange(e);
+															const q = [
+																e.target.value,
+																currentEvent.country,
+															]
+																.filter(Boolean)
+																.join(", ");
+															if (q.trim())
+																geocodeAndMoveMap(
+																	q,
+																	8,
+																);
+														}}
+														placeholder="State or Province"
+														required
+														className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0]"
+													/>
+												</div>
+												<div className="space-y-1">
+													<Label htmlFor="city">
+														City{" "}
+														<span className="text-red-500">
+															*
+														</span>
+													</Label>
+													<Input
+														id="city"
+														name="city"
+														value={
+															currentEvent.city
+														}
+														onChange={(e) => {
+															handleChange(e);
+															const q = [
+																e.target.value,
+																currentEvent.stateProvince,
+																currentEvent.country,
+															]
+																.filter(Boolean)
+																.join(", ");
+															if (q.trim())
+																geocodeAndMoveMap(
+																	q,
+																	12,
+																);
+														}}
+														placeholder="City"
+														required
+														className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0]"
+													/>
+												</div>
+												<div className="space-y-1 relative">
+													<Label htmlFor="address">
+														Address{" "}
+														<span className="text-red-500">
+															*
+														</span>
+													</Label>
+													<div className="relative">
+														<MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+														{isFetchingLocation && (
+															<Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9327e0] animate-spin" />
+														)}
+														<Input
+															id="address"
+															name="address"
+															type="text"
+															value={
+																currentEvent.address
+															}
+															onChange={(e) => {
+																handleChange(e);
+																handleLocationSearch(
+																	e.target
+																		.value,
+																);
+															}}
+															onBlur={() =>
+																setTimeout(
+																	() =>
+																		setShowSuggestions(
+																			false,
+																		),
+																	150,
+																)
+															}
+															onFocus={() =>
+																locationSuggestions.length >
+																	0 &&
+																setShowSuggestions(
+																	true,
+																)
+															}
+															placeholder="Type an address or place name..."
+															required
+															className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0]"
+															autoComplete="off"
+														/>
+													</div>
+													{showSuggestions &&
+														locationSuggestions.length >
+															0 && (
+															<ul className="w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+																{locationSuggestions.map(
+																	(
+																		place,
+																		i,
+																	) => (
+																		<li
+																			key={
+																				i
+																			}
+																			onMouseDown={() =>
+																				handleSelectSuggestion(
+																					place,
+																				)
+																			}
+																			className="flex items-start gap-2 px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-[#9327e0]/10 hover:text-[#9327e0]"
+																		>
+																			<MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#9327e0]" />
+																			<span>
+																				{(() => {
+																					const parts =
+																						place.display_name.split(
+																							", ",
+																						);
+																					const addr =
+																						place.address ||
+																						{};
+																					const city =
+																						addr.city ||
+																						addr.town ||
+																						addr.village ||
+																						addr.county ||
+																						"";
+																					const short =
+																						parts
+																							.slice(
+																								0,
+																								2,
+																							)
+																							.join(
+																								", ",
+																							);
+																					return city &&
+																						!short
+																							.toLowerCase()
+																							.includes(
+																								city.toLowerCase(),
+																							)
+																						? `${short}, ${city}`
+																						: short;
+																				})()}
+																			</span>
+																		</li>
+																	),
+																)}
+															</ul>
+														)}
+												</div>
+											</div>
+											<div className="bg-gradient-to-br from-[#9327e0]/5 to-[#204d74]/5 border-2 border-[#9327e0]/20 rounded-3xl p-6 sm:p-8 lg:p-12 mb-12 sm:mb-16">
+												<h3 className="text-lg sm:text-xl font-bold text-black mb-4">
+													Event Location Map (Click to
+													pin location)
+												</h3>
+												<div
+													ref={mapContainerRef}
+													className="w-full rounded-2xl"
+													style={{
+														height: "70vh",
+														minHeight: "300px",
+														maxHeight: "600px",
+													}}
+												/>
+											</div>
+										</>
+									)}
 								</div>
-							) : (
-								<div className="space-y-4 animate-fade-in">
-									<p className="text-sm text-slate-600">
-										This is a virtual event, so no physical
-										location details are required.
-									</p>
-								</div>
-							))}
+							)}
+
 							{formStep === 2 && (
 								<div className="space-y-6 animate-fade-in">
-									<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-										<div className="space-y-1">
-											<Label htmlFor="startDate">
-												Start Date{" "}
-												<span className="text-red-500">
-													*
-												</span>
-											</Label>
-											<div className="relative flex-1">
-												<Calendar
-													className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 cursor-pointer"
-													onClick={() =>
-														setShowStartPicker(
-															!showStartPicker,
-														)
-													}
-												/>
-												<Input
-													id="startDate"
-													name="startDate"
-													type="text"
-													value={
-														currentEvent.startDate
-													}
-													onClick={() =>
-														setShowStartPicker(
-															!showStartPicker,
-														)
-													}
-													readOnly
-													className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0]"
-													placeholder="Select date"
-													required
-												/>
-												{showStartPicker && (
-													<div className="absolute z-10 mt-1 bg-white rounded-lg shadow-[0_10px_38px_-10px_rgba(0,0,0,0.35),0_10px_20px_-15px_rgba(0,0,0,0.2)]">
-														<DayPicker
-															mode="single"
-															selected={
-																currentEvent.startDate
-																	? new Date(
-																			currentEvent.startDate,
-																		)
-																	: undefined
-															}
-															onSelect={(date) =>
-																handleDateSelect(
-																	date,
-																	"startDate",
-																)
-															}
-															disabled={(date) =>
-																date <
-																new Date()
-															}
-															className="p-4"
-															classNames={{
-																day: "w-8 h-8  rounded-md text-sm font-normal text-black hover:border hover:border-black data-[selected]:bg-[#9327e0] data-[selected]:text-white data-[today]:before:bg-green-500",
-																caption:
-																	"flex items-center justify-between text-black font-medium",
-																nav_button:
-																	"w-8 h-8  rounded-md",
-															}}
-														/>
-													</div>
-												)}
-											</div>
-											<div className="relative">
-												<Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-												<Select
-													value={
-														currentEvent.startTime
-													}
-													onValueChange={(value) =>
-														handleChange({
-															target: {
-																name: "startTime",
-																value,
-																type: "select-one",
-															},
-														})
-													}
-													required
-												>
-													<SelectTrigger
-														id="startTime"
-														className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0] text-left"
-													>
-														<SelectValue placeholder="Select start time" />
-													</SelectTrigger>
-													<SelectContent>
-														{generateTimeOptions().map(
-															(time) => (
-																<SelectItem
-																	key={time}
-																	value={time}
-																>
-																	{time}
-																</SelectItem>
-															),
+									{/* DATE SECTION */}
+									<div>
+										<h4 className="text-sm font-semibold text-slate-600 mb-3 uppercase tracking-wide">
+											Event Dates
+										</h4>
+										<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+											<div className="space-y-1">
+												<Label htmlFor="startDate">
+													Start Date{" "}
+													<span className="text-red-500">
+														*
+													</span>
+												</Label>
+												<div className="relative flex-1">
+													<Calendar
+														className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 cursor-pointer"
+														onClick={() =>
+															setShowStartPicker(
+																!showStartPicker,
+															)
+														}
+													/>
+													<Input
+														id="startDate"
+														name="startDate"
+														type="text"
+														value={formatDateForDisplay(
+															currentEvent.startDate,
 														)}
-													</SelectContent>
-												</Select>
+														onClick={() =>
+															setShowStartPicker(
+																!showStartPicker,
+															)
+														}
+														readOnly
+														className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0]"
+														placeholder="Select Date (Oct 1–15)"
+														required
+													/>
+													{showStartPicker && (
+														<div className="absolute z-10 mt-1 bg-white rounded-lg shadow-[0_10px_38px_-10px_rgba(0,0,0,0.35),0_10px_20px_-15px_rgba(0,0,0,0.2)]">
+															<DayPicker
+																mode="single"
+																selected={
+																	currentEvent.startDate
+																		? new Date(
+																				currentEvent.startDate,
+																			)
+																		: undefined
+																}
+																defaultMonth={
+																	new Date(
+																		new Date().getFullYear(),
+																		9,
+																		1,
+																	)
+																}
+																onSelect={(
+																	date,
+																) =>
+																	handleDateSelect(
+																		date,
+																		"startDate",
+																	)
+																}
+																disabled={(
+																	date,
+																) => {
+																	const m =
+																		date.getMonth();
+																	const d =
+																		date.getDate();
+																	return (
+																		m !==
+																			9 ||
+																		d < 1 ||
+																		d > 15
+																	);
+																}}
+																className="p-4"
+																classNames={{
+																	day: "w-8 h-8 rounded-md text-sm font-normal text-black hover:border hover:border-black data-[selected]:bg-[#9327e0] data-[selected]:text-white",
+																	caption:
+																		"flex items-center justify-between text-black font-medium",
+																	nav_button:
+																		"w-8 h-8 rounded-md",
+																}}
+															/>
+														</div>
+													)}
+												</div>
+											</div>
+											<div className="space-y-1">
+												<Label htmlFor="endDate">
+													End Date{" "}
+													<span className="text-red-500">
+														*
+													</span>
+												</Label>
+												<div className="relative flex-1">
+													<Calendar
+														className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${isSingleDay ? "text-gray-300 cursor-not-allowed" : "text-gray-400 cursor-pointer"}`}
+														onClick={() => {
+															if (isSingleDay)
+																return;
+															setShowEndPicker(
+																!showEndPicker,
+															);
+														}}
+													/>
+													<Input
+														id="endDate"
+														name="endDate"
+														type="text"
+														value={formatDateForDisplay(
+															currentEvent.endDate,
+														)}
+														onClick={() => {
+															if (isSingleDay)
+																return;
+															setShowEndPicker(
+																!showEndPicker,
+															);
+														}}
+														readOnly
+														disabled={isSingleDay}
+														required={!isSingleDay}
+														className={`w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0] ${isSingleDay ? "bg-gray-100 text-gray-500 cursor-not-allowed" : ""}`}
+														placeholder="Select Date (Oct 1–15)"
+													/>
+													{showEndPicker &&
+														!isSingleDay && (
+															<div className="absolute z-10 mt-1 bg-white rounded-lg shadow-[0_10px_38px_-10px_rgba(0,0,0,0.35),0_10px_20px_-15px_rgba(0,0,0,0.2)]">
+																<DayPicker
+																	mode="single"
+																	selected={
+																		currentEvent.endDate
+																			? new Date(
+																					currentEvent.endDate,
+																				)
+																			: undefined
+																	}
+																	defaultMonth={
+																		new Date(
+																			new Date().getFullYear(),
+																			9,
+																			1,
+																		)
+																	}
+																	onSelect={(
+																		date,
+																	) =>
+																		handleDateSelect(
+																			date,
+																			"endDate",
+																		)
+																	}
+																	disabled={(
+																		date,
+																	) => {
+																		const m =
+																			date.getMonth();
+																		const d =
+																			date.getDate();
+																		const outsideRange =
+																			m !==
+																				9 ||
+																			d <
+																				1 ||
+																			d >
+																				15;
+																		const beforeStart =
+																			currentEvent.startDate
+																				? date <
+																					new Date(
+																						currentEvent.startDate,
+																					)
+																				: false;
+																		return (
+																			outsideRange ||
+																			beforeStart
+																		);
+																	}}
+																	className="p-4"
+																	classNames={{
+																		day: "w-8 h-8 rounded-md text-sm font-normal text-black hover:border hover:border-black data-[selected]:bg-[#9327e0] data-[selected]:text-white",
+																		caption:
+																			"flex items-center justify-between text-black font-medium",
+																		nav_button:
+																			"w-8 h-8 rounded-md",
+																	}}
+																/>
+															</div>
+														)}
+												</div>
 											</div>
 										</div>
-										<div className="space-y-1">
-											<Label htmlFor="endDate">
-												End Date{" "}
-												<span className="text-red-500">
-													*
-												</span>
-											</Label>
-											<div className="relative flex-1">
-												<Calendar
-													className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${
-														isSingleDay
-															? "text-gray-300 cursor-not-allowed"
-															: "text-gray-400 cursor-pointer"
-													}`}
-													onClick={() => {
-														if (isSingleDay) return;
-														setShowEndPicker(!showEndPicker);
-													}}
-												/>
-												<Input
-													id="endDate"
-													name="endDate"
-													type="text"
-													value={currentEvent.endDate}
-													onClick={() => {
-														if (isSingleDay) return;
-														setShowEndPicker(!showEndPicker);
-													}}
-													readOnly
-													disabled={isSingleDay}
-													required={!isSingleDay}
-													className={`w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0] ${
-														isSingleDay
-															? "bg-gray-100 text-gray-500 cursor-not-allowed"
-															: ""
-													}`}
-													placeholder="Select date"
-												/>
-												{showEndPicker && !isSingleDay && (
-													<div className="absolute z-10 mt-1 bg-white rounded-lg shadow-[0_10px_38px_-10px_rgba(0,0,0,0.35),0_10px_20px_-15px_rgba(0,0,0,0.2)]">
-														<DayPicker
-															mode="single"
-															selected={
-																currentEvent.endDate
-																	? new Date(
-																			currentEvent.endDate,
-																		)
-																	: undefined
-															}
-															onSelect={(date) =>
-																handleDateSelect(
-																	date,
-																	"endDate",
-																)
-															}
-															disabled={(date) =>
-																date <
-																new Date(
-																	currentEvent.startDate ||
-																		new Date(),
-																)
-															}
-															className="p-4"
-															classNames={{
-																day: "w-8 h-8  rounded-md text-sm font-normal text-black hover:border hover:border-black data-[selected]:bg-[#9327e0] data-[selected]:text-white data-[today]:before:bg-green-500",
-																caption:
-																	"flex items-center justify-between text-black font-medium",
-																nav_button:
-																	"w-8 h-8  rounded-md",
-															}}
-														/>
-													</div>
-												)}
-											</div>
-											<div className="relative">
-												<Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-												<Select
-													value={currentEvent.endTime}
-													onValueChange={(value) =>
-														handleChange({
-															target: {
-																name: "endTime",
-																value,
-																type: "select-one",
-															},
-														})
-													}
-													required
-												>
-													<SelectTrigger
-														id="emdTime"
-														className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0] text-left"
+									</div>
+									{/* TIME SECTION */}
+									<div>
+										<h4 className="text-sm font-semibold text-slate-600 mb-3 uppercase tracking-wide">
+											Event Times{" "}
+											<span className="text-xs font-normal text-slate-400">
+												(optional)
+											</span>
+										</h4>
+										<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+											<div className="space-y-1">
+												<Label htmlFor="startTime">
+													Start Time
+												</Label>
+												<div className="relative">
+													<Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+													<Select
+														value={
+															currentEvent.startTime
+														}
+														onValueChange={(
+															value,
+														) =>
+															handleChange({
+																target: {
+																	name: "startTime",
+																	value,
+																	type: "select-one",
+																},
+															})
+														}
 													>
-														<SelectValue placeholder="Select end time" />
-													</SelectTrigger>
-													<SelectContent>
-														{generateTimeOptions().map(
-															(time) => (
-																<SelectItem
-																	key={time}
-																	value={time}
-																>
-																	{time}
-																</SelectItem>
-															),
-														)}
-													</SelectContent>
-												</Select>
+														<SelectTrigger
+															id="startTime"
+															className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0] text-left"
+														>
+															<SelectValue placeholder="Select start time" />
+														</SelectTrigger>
+														<SelectContent>
+															{generateTimeOptions().map(
+																(time) => (
+																	<SelectItem
+																		key={
+																			time
+																		}
+																		value={
+																			time
+																		}
+																	>
+																		{time}
+																	</SelectItem>
+																),
+															)}
+														</SelectContent>
+													</Select>
+												</div>
+											</div>
+											<div className="space-y-1">
+												<Label htmlFor="endTime">
+													End Time
+												</Label>
+												<div className="relative">
+													<Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+													<Select
+														value={
+															currentEvent.endTime
+														}
+														onValueChange={(
+															value,
+														) =>
+															handleChange({
+																target: {
+																	name: "endTime",
+																	value,
+																	type: "select-one",
+																},
+															})
+														}
+													>
+														<SelectTrigger
+															id="endTime"
+															className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0] text-left"
+														>
+															<SelectValue placeholder="Select end time" />
+														</SelectTrigger>
+														<SelectContent>
+															{generateTimeOptions().map(
+																(time) => (
+																	<SelectItem
+																		key={
+																			time
+																		}
+																		value={
+																			time
+																		}
+																	>
+																		{time}
+																	</SelectItem>
+																),
+															)}
+														</SelectContent>
+													</Select>
+												</div>
 											</div>
 										</div>
 									</div>
@@ -1620,25 +2017,58 @@ const handleDateSelect = (date, field) => {
 											/>
 										</div>
 										<div className="space-y-1">
-											<Label htmlFor="eventColor">
-												Event Color
+											<Label htmlFor="organizerType">
+												Organizer Type
 											</Label>
-											<select
-												id="eventColor"
-												name="eventColor"
-												value={currentEvent.eventColor}
-												onChange={handleColorChange}
-												className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0]"
+											<Select
+												value={
+													currentEvent.organizerType
+												}
+												onValueChange={(val) =>
+													handleChange({
+														target: {
+															name: "organizerType",
+															value: val,
+															type: "select-one",
+														},
+													})
+												}
 											>
-												{colorOptions.map((option) => (
-													<option
-														key={option.value}
-														value={option.value}
-													>
-														{option.label}
-													</option>
-												))}
-											</select>
+												<SelectTrigger
+													id="organizerType"
+													className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0]"
+												>
+													<SelectValue placeholder="Select organizer type" />
+												</SelectTrigger>
+												<SelectContent>
+													<SelectItem value="School / University / Educator">
+														School / University /
+														Educator
+													</SelectItem>
+													<SelectItem value="Individual">
+														Individual
+													</SelectItem>
+													<SelectItem value="Government / Space Agency">
+														Government / Space
+														Agency
+													</SelectItem>
+													<SelectItem value="Research / Company">
+														Research / Company
+													</SelectItem>
+													<SelectItem value="Science Center / Museum">
+														Science Center / Museum
+													</SelectItem>
+													<SelectItem value="NGO / Nonprofit / Club">
+														NGO / Nonprofit / Club
+													</SelectItem>
+													<SelectItem value="Media Organization">
+														Media Organization
+													</SelectItem>
+													<SelectItem value="Other">
+														Other
+													</SelectItem>
+												</SelectContent>
+											</Select>
 										</div>
 									</div>
 									<div className="space-y-1">
@@ -1661,6 +2091,54 @@ const handleDateSelect = (date, field) => {
 											required
 										/>
 									</div>
+									<div className="space-y-1">
+										<Label>Affiliated Organizations</Label>
+										<p className="text-xs text-slate-500">
+											Select all that apply
+										</p>
+										<div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+											{affiliationOptions.map((opt) => (
+												<label
+													key={opt}
+													className="flex items-start gap-2 cursor-pointer"
+												>
+													<input
+														type="checkbox"
+														checked={(
+															(currentEvent.affiliatedOrganizations as string[]) ||
+															[]
+														).includes(opt)}
+														onChange={() =>
+															handleAffiliationChange(
+																opt,
+															)
+														}
+														className="mt-0.5 h-4 w-4 accent-[#9327e0] shrink-0"
+													/>
+													<span className="text-sm text-slate-700">
+														{opt}
+													</span>
+												</label>
+											))}
+										</div>
+										{(
+											(currentEvent.affiliatedOrganizations as string[]) ||
+											[]
+										).includes(
+											"Other (please specify)",
+										) && (
+											<Input
+												name="affiliatedOrganizationsOther"
+												value={
+													currentEvent.affiliatedOrganizationsOther as string
+												}
+												onChange={handleChange}
+												placeholder="Please specify..."
+												className="mt-2 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0]"
+											/>
+										)}
+									</div>
+
 									<div className="space-y-1">
 										<Label htmlFor="expectedAttendance">
 											Expected Attendance{" "}
@@ -1759,9 +2237,9 @@ const handleDateSelect = (date, field) => {
 								<Button
 									type="button"
 									variant="secondary"
-									onClick={handleCancel}
+									onClick={() => setShowCancelConfirm(true)}
 								>
-									Cancel
+									Cancel Registration
 								</Button>
 								{formStep < 2 && (
 									<Button
@@ -1781,10 +2259,14 @@ const handleDateSelect = (date, field) => {
 										{isSaving ? (
 											<>
 												<Loader2 className="w-4 h-4 mr-2 animate-spin" />
-												{editMode ? "Updating..." : "Saving..."}
+												{editMode
+													? "Updating..."
+													: "Saving..."}
 											</>
+										) : editMode ? (
+											"Update Event"
 										) : (
-											editMode ? "Update Event" : "Save Event"
+											"Save Event"
 										)}
 									</Button>
 								)}
@@ -1793,7 +2275,10 @@ const handleDateSelect = (date, field) => {
 					</div>
 				</div>
 			</section>
-			<section className="py-8">
+
+			{/* Calender commited out for now, will add back in later when we have the API set up and can pull in real events to display */}
+
+			{/* <section className="py-8">
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 					<div className="bg-[#220536] backdrop-blur-md rounded-2xl shadow-xl p-6 sm:p-8 mb-8 border border-white/20">
 						<div className="flex flex-col sm:flex-row justify-between items-center mb-6 sm:mb-8 gap-4">
@@ -1903,7 +2388,7 @@ const handleDateSelect = (date, field) => {
 																{/* {
 																	event.startTime
 																} */}
-															</span>
+			{/* </span>
 														)}
 													</div>
 												</div>
@@ -1994,7 +2479,7 @@ const handleDateSelect = (date, field) => {
 						</Dialog>
 					</div>
 				</div>
-			</section>
+			</section> */}
 			<Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
 				<DialogContent className="max-w-[90vw] sm:max-w-3xl max-h-[90vh] overflow-y-auto p-0">
 					<button
@@ -2031,7 +2516,6 @@ const handleDateSelect = (date, field) => {
 									<h2 className="text-xl sm:text-2xl font-bold">
 										{detailsEvent.eventTitle}
 									</h2>
-									
 								</div>
 							</div>
 							<div className="p-4 sm:p-6">
@@ -2041,7 +2525,6 @@ const handleDateSelect = (date, field) => {
 											<h3 className="text-base sm:text-lg font-semibold">
 												Event Details
 											</h3>
-											
 										</div>
 										<p className="mb-4 text-slate-700 text-sm sm:text-base">
 											{detailsEvent.eventDescription}
@@ -2107,7 +2590,7 @@ const handleDateSelect = (date, field) => {
 												</div>
 											)}
 										</div>
-										</div>
+									</div>
 									<div className="space-y-4">
 										<div className="bg-slate-50 rounded-lg p-4">
 											<h3 className="text-base sm:text-lg font-semibold mb-2">
@@ -2169,36 +2652,37 @@ const handleDateSelect = (date, field) => {
 															</div>
 														)}
 													</div>
-													
-	
-
 												</div>
-			
+
 												<div className="flex gap-4">
 													<Button
-												className="mt-4"
-												size="default"
-												// variant="outline"
-												onClick={() => {
-													setShowDetailsModal(false);
-													openEditEventModal(
-														detailsEvent,
-													);
-												}}
-											>
-												Edit Event
-											</Button>
+														className="mt-4"
+														size="default"
+														// variant="outline"
+														onClick={() => {
+															setShowDetailsModal(
+																false,
+															);
+															openEditEventModal(
+																detailsEvent,
+															);
+														}}
+													>
+														Edit Event
+													</Button>
 
-											<Button
-										className="mt-4 bg-red-600 text-white hover:bg-red-700 border-red-600"
-										size="default"
-										onClick={() => setShowDeleteConfirm(true)}
-									>
-										Delete Event
-									</Button>
-
-													</div>
-
+													<Button
+														className="mt-4 bg-red-600 text-white hover:bg-red-700 border-red-600"
+														size="default"
+														onClick={() =>
+															setShowDeleteConfirm(
+																true,
+															)
+														}
+													>
+														Delete Event
+													</Button>
+												</div>
 											</div>
 										</div>
 									</div>
@@ -2208,6 +2692,22 @@ const handleDateSelect = (date, field) => {
 					)}
 				</DialogContent>
 			</Dialog>
+			<ConfirmDialog
+				open={showCancelConfirm}
+				onOpenChange={setShowCancelConfirm}
+				title="Cancel registration?"
+				description={
+					<div className="space-y-1">
+						<p>
+							Are you sure you want to cancel your registration?
+							If you continue, all progress will be lost.
+						</p>
+					</div>
+				}
+				confirmLabel="Cancel Registration"
+				cancelLabel="Continue Registration"
+				onConfirm={handleCancel}
+			/>
 			<ConfirmDialog
 				open={showDeleteConfirm}
 				onOpenChange={setShowDeleteConfirm}
@@ -2221,7 +2721,6 @@ const handleDateSelect = (date, field) => {
 							</span>{" "}
 							from your calendar and cannot be undone.
 						</p>
-						
 					</div>
 				}
 				confirmLabel="Yes, delete event"

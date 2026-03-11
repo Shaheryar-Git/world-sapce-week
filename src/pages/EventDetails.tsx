@@ -7,11 +7,23 @@ import { motion, Variants } from "framer-motion";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { toast } from "sonner";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker } from "react-leaflet";
+import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import moment from "moment";
+
+const customPinIcon = L.divIcon({
+  className: "",
+  html: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36">
+    <path d="M14 0C6.268 0 0 6.268 0 14c0 9.333 14 22 14 22S28 23.333 28 14C28 6.268 21.732 0 14 0z" fill="#9327e0"/>
+    <circle cx="14" cy="14" r="6" fill="white"/>
+  </svg>`,
+  iconSize: [28, 36],
+  iconAnchor: [14, 36],
+  popupAnchor: [0, -36],
+});
 
 // Animation variants
 const containerVariants: Variants = {
@@ -111,8 +123,10 @@ const EventDetail = () => {
   };
 
   useEffect(() => {
+     document.querySelector(".leaflet-control-attribution")?.remove();
     fetchEventById();
   }, [eventId]);
+
 
   // Small reusable block
   const InfoBlock = ({ label, value }: { label: string; value: string | number }) => (
@@ -285,13 +299,10 @@ const EventDetail = () => {
                                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                               />
-                              <Marker position={[event.location.latitude, event.location.longitude]}>
-                                <Popup>
-                                  <strong>{event.details.eventTitle}</strong>
-                                  <br />
-                                  {event.location.locationName || "Venue not specified"}
-                                </Popup>
-                              </Marker>
+                              <Marker
+                                position={[event.location.latitude, event.location.longitude]}
+                                icon={customPinIcon}
+                              />
                             </MapContainer>
                           </div>
                         ) : (

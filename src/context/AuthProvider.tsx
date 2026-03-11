@@ -16,13 +16,8 @@ type UserResponse = {
 
 interface AuthContextType {
 	user: User | null;
-	login: (id: String, email: string, password: string) => Promise<boolean>;
-	signup: (
-		name: string,
-		email: string,
-		password: string,
-		registerAs: string
-	) => Promise<UserResponse>;
+	login: ( email: string, password: string) => Promise<boolean>;
+	signup: (name: string,email: string,password: string,registerAs: string) => Promise<UserResponse>;
 	logout: () => Promise<void>;
 	isLoading: boolean;
 }
@@ -112,6 +107,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		email: string,
 		password: string,
 		registerAs: string
+		
 	): Promise<UserResponse> => {
 		setIsLoading(true);
 		try {

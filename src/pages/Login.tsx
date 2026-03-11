@@ -11,7 +11,7 @@ import { useAuth } from "@/context/AuthProvider";
 
 interface FormValues {
 	email: string;
-	password: string;
+	password: string;	
 }
 
 const Login = () => {
@@ -28,10 +28,7 @@ const Login = () => {
 		}
 	}, [user, navigate]);
 
-	 const handleLogin = async (
-    values: FormValues,
-    { setSubmitting }: FormikHelpers<FormValues>
-  ) => {
+	 const handleLogin = async (values: FormValues,{ setSubmitting }: FormikHelpers<FormValues>) => {
     setIsLoading(true);
     try {
       const success = await login(values.email, values.password);
