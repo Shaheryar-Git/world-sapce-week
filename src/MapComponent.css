@@ -1,8 +1,89 @@
 .chart-div {
-  width: 100%;
-  height: 95vh;
-  min-height: 200px;
-  max-height: 500px;
-  border-radius: 5rem;
+  width: 1300px;
+  max-width: 100%;                /* ← prevents overflow on screens < 1300px */
+  height: 600px;
+  margin: 3rem auto;              /* centers horizontally + breathing room */
+   border-radius: 1.5rem;
   overflow: hidden;
+  box-shadow: 0 8px 32px rgba(147, 39, 224, 0.2); 
+}
+
+/* Loading overlay – kept exactly as you have */
+.map-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  z-index: 10;
+  color: #e0e0ff;
+  font-family: system-ui, sans-serif;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 5px solid #9327e0;
+  border-top: 5px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ────────────────────────────────────────────────
+   RESPONSIVE ADJUSTMENTS
+   (border-radius, shadow, core style preserved)
+───────────────────────────────────────────────── */
+
+/* Tablets & smaller laptops */
+@media (max-width: 1366px) {
+  .chart-div {
+    width: 1100px;               /* slightly smaller but still wide */
+    height: 580px;               /* very minor reduction */
+  }
+}
+
+/* Typical tablet / landscape mobile */
+@media (max-width: 1024px) {
+  .chart-div {
+    width: 90%;                  /* becomes percentage-based */
+    height: 65vh;                /* uses viewport height → better fit */
+    min-height: 500px;           /* never too small */
+    max-height: 600px;           /* respects your original preference */
+  }
+}
+
+/* Portrait tablets & larger phones */
+@media (max-width: 768px) {
+  .chart-div {
+    width: 92%;
+    height: 60vh;
+    min-height: 420px;           /* good minimum for usability */
+  }
+
+  /* Make zoom controls a bit smaller on touch devices */
+  .am5-zoom-control {
+    transform: scale(0.9);
+  }
+}
+
+/* Small phones (portrait) */
+@media (max-width: 480px) {
+  .chart-div {
+    width: 94%;
+    height: 55vh;
+    min-height: 360px;
+    margin: 2rem auto;           /* less vertical space on small screens */
+  }
+
+  .am5-zoom-control {
+    transform: scale(0.85);
+  }
 }

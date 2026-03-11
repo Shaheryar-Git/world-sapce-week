@@ -16,7 +16,7 @@ const Index = () => {
       <Hero />
       {/* <FeaturedEvents /> */}
       {/* <EventMap/> */}
-      <h1 className="text-center text-5xl font-bold text-gray-900 mb-10 mt-10">Global Events</h1>
+      <h1 className="text-center text-5xl font-bold text-gray-900 mb-10 mt-10">Global Map</h1>
       <MapComponent/>
       <EventsCallToAction />
       {/* <FeaturedSponsors /> */}

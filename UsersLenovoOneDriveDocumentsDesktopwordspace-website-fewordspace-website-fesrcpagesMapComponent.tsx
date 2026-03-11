@@ -1,11 +1,10 @@
-﻿import React, { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import * as am5 from "@amcharts/amcharts5";
-import * as am5map from "@amcharts/amcharts5/map";
-import am5geodata_worldLow from "@amcharts/amcharts5-geodata/worldLow";
-import am5themes_Animated from "@amcharts/amcharts5/themes/Animated";
-import "../../src/MapComponent.css";
-import axios from "axios";
+import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import * as am5 from '@amcharts/amcharts5';
+import * as am5map from '@amcharts/amcharts5/map';
+import am5geodata_worldLow from '@amcharts/amcharts5-geodata/worldLow';
+import am5themes_Animated from '@amcharts/amcharts5/themes/Animated';
+import '../../src/MapComponent.css';
 
 interface GeoJsonDataContext {
   id: string;
@@ -13,12 +12,9 @@ interface GeoJsonDataContext {
 }
 
 interface MapEvent {
-  id: string;
   eventTitle: string;
   organizationName: string;
   city: string;
-  country: string;
-  expectedAttendance: string | number;
   latitude: number;
   longitude: number;
 }
@@ -32,9 +28,8 @@ const MapComponent: React.FC = () => {
 
   // Initialize Map
   useEffect(() => {
-    
-    
     if (!chartDivRef.current) return;
+
     const root = am5.Root.new(chartDivRef.current);
     rootRef.current = root;
 
@@ -42,55 +37,37 @@ const MapComponent: React.FC = () => {
 
     const chart = root.container.children.push(
       am5map.MapChart.new(root, {
-        panX: "translateX",
-        panY: "translateY",
+        panX: 'translateX',
+        panY: 'translateY',
         projection: am5map.geoMercator(),
       })
     );
-
-    // ────────────────────────────────────────────────
-    // ADD ZOOM CONTROLS (+ / − buttons + Home button)
-    // ────────────────────────────────────────────────
-    const zoomControl = chart.set(
-      "zoomControl",
-      am5map.ZoomControl.new(root, {
-        x: am5.percent(100),
-        centerX: am5.percent(100),
-        y: am5.percent(50),
-        centerY: am5.percent(50),
-        marginRight: 15,
-        marginTop: 15,
-      })
-    );
-
-    // Optional: show Home button (globe icon → reset to world view)
-    zoomControl.homeButton.set("visible", true);
 
     // WORLD POLYGON SERIES
     const polygonSeries = chart.series.push(
       am5map.MapPolygonSeries.new(root, {
         geoJSON: am5geodata_worldLow,
-        exclude: ["AQ"],
+        exclude: ['AQ'],
       })
     );
 
     polygonSeries.mapPolygons.template.setAll({
-      tooltipText: "{name}",
+      tooltipText: '{name}',
       interactive: true,
-      toggleKey: "active",
+      toggleKey: 'active',
       strokeWidth: 1,
     });
 
     // Highlight countries with events
-    polygonSeries.mapPolygons.template.states.create("hasEvent", {
-      fill: am5.color("#9327E0"),
+    polygonSeries.mapPolygons.template.states.create('hasEvent', {
+      fill: am5.color('#9327E0'),
       fillOpacity: 0.7,
     });
 
     let selectedPolygon: am5map.MapPolygon | null = null;
 
-    // CLICK HANDLER
-    polygonSeries.mapPolygons.template.events.on("click", async (ev) => {
+    // CLICK HANDLER (UNCHANGED LOGIC)
+    polygonSeries.mapPolygons.template.events.on('click', async (ev) => {
       const polygon = ev.target;
       const dataItem =
         polygon.dataItem as am5.DataItem<am5map.IMapPolygonSeriesDataItem>;
@@ -101,8 +78,7 @@ const MapComponent: React.FC = () => {
       const fetchEvents = async (countryName: string) => {
         try {
           const response = await fetch(
-            `${import.meta.env.VITE_API_URL}/events/${countryName}`
-          );
+                      );
           const data = await response.json();
           return response.ok ? data.events || [] : [];
         } catch {
@@ -113,19 +89,19 @@ const MapComponent: React.FC = () => {
       const events = await fetchEvents(dataContext.name);
 
       if (selectedPolygon) {
-        selectedPolygon.states.apply("default");
+        selectedPolygon.states.apply('default');
       }
 
-      polygon.states.apply("active");
+      polygon.states.apply('active');
       selectedPolygon = polygon;
 
-      navigate(`/nation/${encodeURIComponent(dataContext.name)}`, {
+      navigate(, {
         state: { countryName: dataContext.name, events },
       });
     });
 
     // Apply highlights AFTER countries are fetched
-    polygonSeries.events.on("datavalidated", () => {
+    polygonSeries.events.on('datavalidated', () => {
       const countrySet = new Set(countries.map((c) => c.trim()));
       polygonSeries.mapPolygons.each((polygon) => {
         const dataContext = polygon.dataItem?.dataContext as
@@ -133,7 +109,7 @@ const MapComponent: React.FC = () => {
           | undefined;
 
         if (dataContext && countrySet.has(dataContext.name)) {
-          polygon.states.apply("hasEvent");
+          polygon.states.apply('hasEvent');
         }
       });
     });
@@ -147,18 +123,18 @@ const MapComponent: React.FC = () => {
       pointSeries.bullets.push(() => {
         const container = am5.Container.new(root, {});
 
-        // Outer pulsating ring
+        // Outer pulsating ring - animates outward and fades out
         const outerCircle = container.children.push(
           am5.Circle.new(root, {
             radius: 7,
-            fill: am5.color("#bc35ff"),
+            fill: am5.color('#bc35ff'),
             fillOpacity: 0.5,
             strokeOpacity: 0,
           })
         );
 
         outerCircle.animate({
-          key: "radius",
+          key: 'radius',
           from: 7,
           to: 22,
           duration: 1600,
@@ -167,7 +143,7 @@ const MapComponent: React.FC = () => {
         });
 
         outerCircle.animate({
-          key: "fillOpacity",
+          key: 'fillOpacity',
           from: 0.5,
           to: 0,
           duration: 1600,
@@ -176,25 +152,17 @@ const MapComponent: React.FC = () => {
         });
 
         // Inner solid dot with tooltip
-        const innerCircle = container.children.push(
+        container.children.push(
           am5.Circle.new(root, {
             radius: 6,
-            fill: am5.color("#4700b1"),
+            fill: am5.color('#4700b1'),
             strokeOpacity: 0,
-            tooltipText: "[bold]{eventTitle}[/]\n{organizationName}[/]\n{city}, {country}[/]\nAttendance: {expectedAttendance}[/]",
-            cursorOverStyle: "pointer",
+            tooltipText: '[bold]{eventTitle}[/]
+[#cccccc]{organizationName}[/]
+{city}',
+            cursorOverStyle: 'pointer',
           })
         );
-
-        innerCircle.events.on("click", (ev) => {
-          const dataItem = ev.target.dataItem as any;
-          const eventId = dataItem?.dataContext?.id;
-          if (eventId) {
-            fetchEventById(eventId).then((data) => {
-              console.log("Event data:", data);
-            });
-          }
-        });
 
         return am5.Bullet.new(root, { sprite: container });
       });
@@ -202,15 +170,12 @@ const MapComponent: React.FC = () => {
       pointSeries.data.setAll(
         mapEvents.map((e) => ({
           geometry: {
-            type: "Point" as const,
+            type: 'Point' as const,
             coordinates: [e.longitude, e.latitude] as [number, number],
           },
-          id: e.id,
           eventTitle: e.eventTitle,
           organizationName: e.organizationName,
           city: e.city,
-          country: e.country,
-          expectedAttendance: e.expectedAttendance,
         }))
       );
     }
@@ -220,79 +185,58 @@ const MapComponent: React.FC = () => {
     };
   }, [countries, mapEvents, navigate]);
 
-  // FETCH COUNTRIES WITH EVENTS
+  // FETCH COUNTRIES (unchanged)
   useEffect(() => {
     const fetchCountries = async () => {
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/events/countries`
-        );
+                  );
         const data = await response.json();
         setCountries(data);
       } catch (error) {
-        console.error("Failed to fetch countries:", error);
+        console.error(error);
       }
     };
 
     fetchCountries();
   }, []);
 
-  // FETCH ALL MAPPED EVENTS FOR PULSATING BULLETS
+  // FETCH ALL MAPPED EVENTS WITH COORDINATES FOR PULSATING BULLETS
   useEffect(() => {
     const fetchMapEvents = async () => {
       try {
         const currentYear = new Date().getFullYear();
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/event/mappedEvents/true/${currentYear}`
-        );
+                  );
         const data = await response.json();
         const raw: any[] = data?.data || [];
 
         const events: MapEvent[] = raw
           .filter(
             (e) =>
-              typeof e?.location?.latitude === "number" &&
-              typeof e?.location?.longitude === "number"
+              typeof e?.location?.latitude === 'number' &&
+              typeof e?.location?.longitude === 'number'
           )
           .map((e) => ({
-            id: e?._id || e?.id || "",
-            eventTitle: e?.details?.eventTitle || e?.name || "Event Information",
-            organizationName: e?.organization?.organizationName || "",
-            city: e?.location?.city || "",
-            country: e?.location?.country || "",
-            expectedAttendance: e?.details?.expectedAttendance || e?.expectedAttendance || "",
+            eventTitle: e?.details?.eventTitle || e?.name || 'Event',
+            organizationName: e?.organization?.organizationName || '',
+            city: e?.location?.city || '',
             latitude: e.location.latitude,
             longitude: e.location.longitude,
           }));
 
         setMapEvents(events);
       } catch (error) {
-        console.error("Failed to fetch map events:", error);
+        console.error('Failed to fetch map events:', error);
       }
     };
 
     fetchMapEvents();
   }, []);
 
-  const fetchEventById = async (eventId: string) => {
-  try {
-   const response = await axios.get(`${import.meta.env.VITE_API_URL}/getEvent/${eventId}`);
-      const event = response.data?.data;
-      console.log("event", event);
-      navigate(`/event/${eventId}`, {
-        state: { event },
-      });
-    
-  } catch (error) {
-    console.error("Failed to fetch event:", error);
-    return null;
-  }
-};
-
-
   return (
-    <div className="map-container">
-      <div ref={chartDivRef} className="chart-div" />
+    <div className='map-container'>
+      <div ref={chartDivRef} className='chart-div' />
     </div>
   );
 };

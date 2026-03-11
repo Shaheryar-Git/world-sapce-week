@@ -15,7 +15,7 @@ const SignupSchema = Yup.object().shape({
 			"Password must contain at least one uppercase letter, one lowercase letter, one number, and no spaces"
 		)
 		.required("Password is required"),
-	registerAs: Yup.string().required("Password is required"),
+	registerAs: Yup.string().required("Please select an option."),
 	terms: Yup.bool()
 		.oneOf([true], "You must agree to the terms of service")
 		.required("You must agree to the terms of service"),

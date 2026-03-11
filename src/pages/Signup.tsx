@@ -25,6 +25,7 @@ const SignupForm: React.FC<SignupFormProps> = ({ scrollY, fadeOffset }) => {
   const { user, signup } = useAuth();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -32,10 +33,8 @@ const SignupForm: React.FC<SignupFormProps> = ({ scrollY, fadeOffset }) => {
     }
   }, [user, navigate]);
 
-  const handleSignup = async (
-    values: FormValues,
-    { setSubmitting }: FormikHelpers<FormValues>
-  ) => {
+  const handleSignup = async ( values: FormValues,{ setSubmitting }: FormikHelpers<FormValues>) => {
+    setIsLoading(true);
   try {
     const r = await signup(values.name, values.email, values.password, values.registerAs);
 
@@ -49,6 +48,7 @@ const SignupForm: React.FC<SignupFormProps> = ({ scrollY, fadeOffset }) => {
     console.error("Error:", err);
     toast.error(err.message || "Failed to create account");
   } finally {
+    setIsLoading(false);
     setSubmitting(false);
   }
 };
@@ -241,9 +241,9 @@ const SignupForm: React.FC<SignupFormProps> = ({ scrollY, fadeOffset }) => {
                 <button
                   type="submit"
                   className="btn-primary w-full"
-                  disabled={isSubmitting}
+                  disabled={isLoading}
                 >
-                  Create Account
+                 {isLoading ? "Creating Account..." : "Sign Up"}
                 </button>
               </Form>
             )}
