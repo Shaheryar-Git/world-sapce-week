@@ -197,11 +197,11 @@ const EventsList = () => {
                             // key={index}
                             className="border-b border-gray-700 hover:bg-white/15 transition-colors duration-300"
                           >
-                            <td className="py-4 px-6 text-gray-200">{event.location.country || "Not Specified"}</td>
-                            <td className="py-4 px-6 text-gray-200">{event.location.stateProvince || "Not Specified"}</td>
-                            <td className="py-4 px-6 flex items-center gap-2 text-gray-200">
+                            <td className="py-4 px-6 text-gray-200">{event.location.country || "Virtual"}</td>
+                            <td className="py-4 px-6 text-gray-200">{event.location.stateProvince || "Virtual Event"}</td>
+                            <td className="py-8 px-6 flex items-center gap-2 text-gray-200">
                               <MapPin className="h-4 w-4 text-[#170324]" />
-                              {event.location.city || "Not Specified"}
+                              {event.location.city || "Virtual Event"}
                             </td>
                             <td className="py-4 px-6 font-medium text-white">{event.details.eventTitle}</td>
                             <td className="py-4 px-10 text-gray-200">{moment(event.date.startDate).format("MMMM DD, YYYY")}</td>

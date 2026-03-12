@@ -181,8 +181,12 @@ const MapComponent: React.FC = () => {
             radius: 6,
             fill: am5.color("#4700b1"),
             strokeOpacity: 0,
-            tooltipText: "[bold]{eventTitle}[/]\n{organizationName}[/]\n{city}, {country}[/]\nAttendance: {expectedAttendance}[/]",
+            interactive: true,
+            tooltipText: "[bold]{eventTitle}[/]\n{organizationName}\n{city}, {country}\nAttendance: {expectedAttendance}",
             cursorOverStyle: "pointer",
+            tooltip: am5.Tooltip.new(root, {
+              labelText: "[bold]{eventTitle}[/]\n{organizationName}\n{city}, {country}\nAttendance: {expectedAttendance}",
+            }),
           })
         );
 

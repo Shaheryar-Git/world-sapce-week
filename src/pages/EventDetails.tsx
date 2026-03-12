@@ -133,7 +133,7 @@ const EventDetail = () => {
     <div>
       <p className="text-sm font-semibold text-gray-300">{label}</p>
       <p className="mt-1 text-white/90 bg-white/5 border border-white/10 rounded-xl px-4 py-2">
-        {value || "Not Specified"}
+        {value || "Virtual "}
       </p>
     </div>
   );
@@ -199,11 +199,11 @@ const EventDetail = () => {
             >
               <Button
                 variant="ghost"
-                onClick={() => navigate(`/event-list/${event.eventInfo.year}`)}
+                onClick={() => navigate(`/event-list/${event.eventInfo?.year}`)}
                 className="mb-6 text-white hover:bg-white/10 hover:text-[#9327e0] transition-all duration-300"
               >
                 <ArrowLeft className="mr-2 h-5 w-5" />
-                Back to {event.eventInfo.year} Events
+                Back to {event.eventInfo?.year} Events
               </Button>
 
               <div className="flex items-center gap-4 mb-6">
@@ -235,17 +235,28 @@ const EventDetail = () => {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <motion.div variants={itemVariants} className="grid gap-4">
-                    <InfoBlock label="Event Name" value={event.details.eventTitle} />
-                    <div className="grid grid-cols-2 gap-4">
-                      <InfoBlock label="Country" value={event.location.country} />
-                      <InfoBlock label="State/Province" value={event.location.stateProvince} />
-                    </div>
-                    <InfoBlock label="City" value={event.location.city} />
-                    <InfoBlock label="Venue" value={event.location.locationName} />
+                    <InfoBlock label="Event Name" value={event.details?.eventTitle} />
+                    {event.eventInfo?.physicalEvent !== false ? (
+                      <>
+                        <div className="grid grid-cols-2 gap-4">
+                          <InfoBlock label="Country" value={event.location?.country} />
+                          <InfoBlock label="State/Province" value={event.location?.stateProvince} />
+                        </div>
+                        <InfoBlock label="City" value={event.location?.city} />
+                        <InfoBlock label="Venue" value={event.location?.locationName} />
+                      </>
+                    ) : (
+                      <div>
+                        <p className="text-sm font-semibold text-gray-300">Event Format</p>
+                        <p className="mt-1 text-white/90 bg-white/5 border border-white/10 rounded-xl px-4 py-2">
+                          Online / Virtual — no physical location
+                        </p>
+                      </div>
+                    )}
                     <div>
                       <p className="text-sm font-semibold text-gray-300">Description</p>
                       <p className="mt-1 text-white/90 bg-white/5 border border-white/10 rounded-xl px-4 py-3 leading-relaxed">
-                        {event.details.eventDescription || "No description available"}
+                        {event.details?.eventDescription || "No description available"}
                       </p>
                     </div>
                   </motion.div>
@@ -263,32 +274,33 @@ const EventDetail = () => {
                 <CardContent className="space-y-6">
                   <motion.div variants={itemVariants} className="grid gap-4">
                     <div className="grid grid-cols-2 gap-4">
-                      <InfoBlock label="Start Date" value={moment(event.date.startDate).format("MMMM DD, YYYY")} />
-                      <InfoBlock label="End Date" value={moment(event.date.endDate).format("MMMM DD, YYYY")} />
+                      <InfoBlock label="Start Date" value={event.date?.startDate ? moment(event.date.startDate).format("MMMM DD, YYYY") : ""} />
+                      <InfoBlock label="End Date" value={event.date?.endDate ? moment(event.date.endDate).format("MMMM DD, YYYY") : ""} />
                     </div>
-                    <InfoBlock label="Organizer" value={event.organization.organizationName} />
-                    <InfoBlock label="Event Type" value={event.eventInfo.eventType} />
-                    <InfoBlock label="Expected Attendance" value={event.details.expectedAttendance} />
+                    <InfoBlock label="Organizer" value={event.organization?.organizationName} />
+                    <InfoBlock label="Event Type" value={event.eventInfo?.eventType} />
+                    <InfoBlock label="Expected Attendance" value={event.details?.expectedAttendance} />
 
                     <div>
-                      <p className="text-sm font-semibold text-gray-300">Physical Event</p>
+                      <p className="text-sm font-semibold text-gray-300">Event Format</p>
                       <div className="mt-2">
                         <Badge
-                          variant={event.eventInfo.physicalEvent ? "default" : "secondary"}
-                          className={event.eventInfo.physicalEvent ? "bg-[#9327e0]/20 text-[#9327e0] border-[#9327e0]/50" : "bg-gray-600 text-gray-200 border-gray-500"}
+                          variant={event.eventInfo?.physicalEvent !== false ? "default" : "secondary"}
+                          className={event.eventInfo?.physicalEvent !== false ? "bg-[#9327e0]/20 text-[#9327e0] border-[#9327e0]/50" : "bg-gray-600 text-gray-200 border-gray-500"}
                         >
-                          {event.eventInfo.physicalEvent ? "Yes" : "Virtual"}
+                          {event.eventInfo?.physicalEvent !== false ? "In-person" : "Virtual"}
                         </Badge>
                       </div>
                     </div>
 
+                    {event.eventInfo?.physicalEvent !== false && (
                     <div>
                       <p className="text-sm font-semibold text-gray-300 flex items-center gap-2">
                         <MapPin className="h-4 w-4 text-[#9327e0]" />
                         Location Map
                       </p>
                       <div className="mt-2">
-                        {event.eventInfo.physicalEvent && event.location.latitude !== null && event.location.longitude !== null ? (
+                        {event.location?.latitude != null && event.location?.longitude != null ? (
                           <div className="h-[300px] rounded-xl overflow-hidden border border-white/10">
                             <MapContainer
                               center={[event.location.latitude, event.location.longitude]}
@@ -310,6 +322,7 @@ const EventDetail = () => {
                         )}
                       </div>
                     </div>
+                    )}
                   </motion.div>
                 </CardContent>
               </Card>
@@ -324,7 +337,7 @@ const EventDetail = () => {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <motion.div variants={itemVariants} className="grid gap-4 md:grid-cols-2">
-                    <InfoBlock label="Contact Email" value={event.contact.publicEmail} />
+                    <InfoBlock label="Contact Email" value={event.contact?.publicEmail} />
                     <div>
                       <p className="text-sm font-semibold text-gray-300 flex items-center gap-2">
                         <ExternalLink className="h-4 w-4 text-[#9327e0]" />
@@ -332,9 +345,9 @@ const EventDetail = () => {
                       </p>
                       <div className="mt-1 flex items-center gap-2">
                         <p className="text-white/90 bg-white/5 border border-white/10 rounded-xl px-4 py-2 flex-1 truncate">
-                          {event.eventInfo.eventWebAddress || "Not Specified"}
+                          {event.eventInfo?.eventWebAddress || "Not Specified"}
                         </p>
-                        {event.eventInfo.eventWebAddress && (
+                        {event.eventInfo?.eventWebAddress && (
                           <Button
                             variant="outline"
                             size="sm"
