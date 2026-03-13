@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import * as am5 from "@amcharts/amcharts5";
 import * as am5map from "@amcharts/amcharts5/map";
@@ -246,6 +246,7 @@ const MapComponent: React.FC = () => {
           `${import.meta.env.VITE_API_URL}/event/mappedEvents/true/${currentYear}`
         );
         const data = await response.json();
+        console.log("data", data);
         const raw: any[] = data?.data || [];
 
         const events: MapEvent[] = raw
@@ -256,16 +257,31 @@ const MapComponent: React.FC = () => {
           )
           .map((e) => ({
             id: e?._id || e?.id || "",
-            eventTitle: e?.details?.eventTitle || e?.name || "Event Information",
-            organizationName: e?.organization?.organizationName || "",
-            city: e?.location?.city || "",
-            country: e?.location?.country || "",
-            expectedAttendance: e?.details?.expectedAttendance || e?.expectedAttendance || "",
+            // Try multiple possible shapes for title & org name
+            eventTitle:
+              e?.details?.eventTitle ||
+              "Event Information",
+            organizationName:
+              e?.organization?.organizationName ||
+              e?.organizationName ||
+              "",
+            // City / country may be nested under location or flat on the object
+            city: e?.location?.city || e?.city || "",
+            country: e?.location?.country || e?.country || "",
+            // Attendance can be nested in details or flat
+            expectedAttendance:
+              e?.details?.expectedAttendance ||
+              e?.expectedAttendance ||
+              "",
             latitude: e.location.latitude,
             longitude: e.location.longitude,
           }));
 
         setMapEvents(events);
+
+        console.log("Mapped events:", events);
+        
+
       } catch (error) {
         console.error("Failed to fetch map events:", error);
       }
