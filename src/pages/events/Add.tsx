@@ -64,7 +64,7 @@ const initialEvent = {
 	publicPhone: "",
 	organizationName: "",
 	eventWebAddress: "",
-	year: "",
+	year: "2026",
 	physicalEvent: true,
 	eventFormat: "",
 	eventType: "",
@@ -215,19 +215,34 @@ export default function AddEvent() {
 		// Only enter edit mode when we navigated here via a PUSH
 		// (e.g. clicking "Edit Event" in All.tsx), not on page refresh/back.
 		if (navigationType !== "PUSH") return;
-	  
+
 		const state = location.state as { eventToEdit?: any } | null;
 		if (state?.eventToEdit) {
-		  setEditMode(true);
-		  setSelectedEvent(state.eventToEdit);
-		  setCurrentEvent(state.eventToEdit);
-		  setFormStep(0);
+			setEditMode(true);
+			setSelectedEvent(state.eventToEdit);
+
+			// When editing, clear all Location (formStep === 1) fields
+			// so the user can re-enter them.
+			const eventForEdit = {
+				...state.eventToEdit,
+				country: "",
+				stateProvince: "",
+				city: "",
+				address: "",
+				streetAddress: "",
+				locationName: "",
+				latitude: null,
+				longitude: null,
+			};
+
+			setCurrentEvent(eventForEdit);
+			setFormStep(0);
 		}
-	  }, [location.state, navigationType]);
+	}, [location.state, navigationType]);
 	
 
 	useEffect(() => {
-		generateCalendar();
+		// generateCalendar();
 	}, [currentMonth, currentYear, events]);
 
 	useEffect(() => {
@@ -248,51 +263,51 @@ export default function AddEvent() {
 
 	
 
-	const generateCalendar = () => {
-		const firstDay = new Date(currentYear, currentMonth, 1);
-		const firstDayIndex = firstDay.getDay();
-		const lastDate = getDaysInMonth(currentYear, currentMonth);
-		const prevLastDate = getDaysInMonth(currentYear, currentMonth - 1);
-		const totalCalendarDays = 42;
-		const days = [];
+	// const generateCalendar = () => {
+	// 	const firstDay = new Date(currentYear, currentMonth, 1);
+	// 	const firstDayIndex = firstDay.getDay();
+	// 	const lastDate = getDaysInMonth(currentYear, currentMonth);
+	// 	const prevLastDate = getDaysInMonth(currentYear, currentMonth - 1);
+	// 	const totalCalendarDays = 42;
+	// 	const days = [];
 
-		for (let i = firstDayIndex - 1; i >= 0; i--) {
-			const date = new Date(
-				currentYear,
-				currentMonth - 1,
-				prevLastDate - i,
-			);
-			days.push({
-				date: date.toISOString().split("T")[0],
-				isCurrentMonth: false,
-				isToday: isToday(date),
-				events: getEventsForDate(date, events),
-			});
-		}
+	// 	for (let i = firstDayIndex - 1; i >= 0; i--) {
+	// 		const date = new Date(
+	// 			currentYear,
+	// 			currentMonth - 1,
+	// 			prevLastDate - i,
+	// 		);
+	// 		days.push({
+	// 			date: date.toISOString().split("T")[0],
+	// 			isCurrentMonth: false,
+	// 			isToday: isToday(date),
+	// 			events: getEventsForDate(date, events),
+	// 		});
+	// 	}
 
-		for (let i = 1; i <= lastDate; i++) {
-			const date = new Date(currentYear, currentMonth, i);
-			days.push({
-				date: `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(i).padStart(2, "0")}`,
-				isCurrentMonth: true,
-				isToday: isToday(date),
-				events: getEventsForDate(date, events),
-			});
-		}
+	// 	for (let i = 1; i <= lastDate; i++) {
+	// 		const date = new Date(currentYear, currentMonth, i);
+	// 		days.push({
+	// 			date: `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(i).padStart(2, "0")}`,
+	// 			isCurrentMonth: true,
+	// 			isToday: isToday(date),
+	// 			events: getEventsForDate(date, events),
+	// 		});
+	// 	}
 
-		const remainingDays = totalCalendarDays - days.length;
-		for (let i = 1; i <= remainingDays; i++) {
-			const date = new Date(currentYear, currentMonth + 1, i);
-			days.push({
-				date: date.toISOString().split("T")[0],
-				isCurrentMonth: false,
-				isToday: isToday(date),
-				events: getEventsForDate(date, events),
-			});
-		}
+	// 	const remainingDays = totalCalendarDays - days.length;
+	// 	for (let i = 1; i <= remainingDays; i++) {
+	// 		const date = new Date(currentYear, currentMonth + 1, i);
+	// 		days.push({
+	// 			date: date.toISOString().split("T")[0],
+	// 			isCurrentMonth: false,
+	// 			isToday: isToday(date),
+	// 			events: getEventsForDate(date, events),
+	// 		});
+	// 	}
 
-		setCalendarDays(days);
-	};
+	// 	setCalendarDays(days);
+	// };
 
 	const getEventsForDate = (date, allEvents) => {
 		return allEvents.filter((event) => {
@@ -342,10 +357,26 @@ export default function AddEvent() {
 	const openEditEventModal = (event) => {
 		setEditMode(true);
 		setSelectedEvent(event);
-		setCurrentEvent(event);
+
+		// Clear only Location step fields while keeping other data for editing
+		const eventForEdit = {
+			...event,
+			country: "",
+			stateProvince: "",
+			city: "",
+			address: "",
+			streetAddress: "",
+			locationName: "",
+			latitude: null,
+			longitude: null,
+		};
+
+		setCurrentEvent(eventForEdit);
 		setFormStep(0);
 		setShowEventModal(true);
-		navigate("/events/add", { state: { eventToEdit: detailsEvent, scrollToEdit: true } });
+		navigate("/events/add", {
+			state: { eventToEdit: event, scrollToEdit: true },
+		});
 	};
 
 // 	const handleEditEvent = () => {
@@ -362,11 +393,11 @@ export default function AddEvent() {
 
   // Validate all required fields BEFORE setting loading state
   const needsLocation = currentEvent.eventFormat !== "Online / Virtual";
+  const needsPublicContact = currentEvent.attendanceType === "Public";
   const allRequiredFields = [
     "publicContactName",
     "publicEmail",
-    "publicPhone",
-    "eventWebAddress",
+    ...(needsPublicContact ? ["publicPhone", "eventWebAddress"] : []),
     "eventType",
     "startEndType",
     ...(needsLocation
@@ -403,10 +434,10 @@ export default function AddEvent() {
   publicPhone: currentEvent.publicPhone,
   organizationName: currentEvent.organizationName,
   eventWebAddress: currentEvent.eventWebAddress,
-  year: Number(currentEvent.year) || undefined,
+  year: Number(currentEvent.year) || "2026",
   eventType: currentEvent.eventType,
-  attendanceType: currentEvent.attendanceType,
-  eventFormat: currentEvent.eventFormat || "In-person (physical location)",
+  attendanceType: currentEvent.attendanceType ,
+  eventFormat: currentEvent.eventFormat || "",
   startEndType: currentEvent.startEndType,
   physicalEvent: currentEvent.eventFormat !== "Online / Virtual",
   organizerType: currentEvent.organizerType,
@@ -482,8 +513,8 @@ export default function AddEvent() {
       eventWebAddress: raw.eventInfo?.eventWebAddress || "",
       year: raw.eventInfo?.year || "",
       eventType: raw.eventInfo?.eventType || "",
-      attendanceType: raw.eventInfo?.attendanceType || "Public",
-      eventFormat: raw.eventInfo?.eventFormat || "In-person (physical location)",
+      attendanceType: raw.eventInfo?.attendanceType || "",
+      eventFormat: raw.eventInfo?.eventFormat || "",
       startEndType: raw.eventInfo?.startEndType || "",
       physicalEvent: raw.eventInfo?.physicalEvent ?? true,
       organizerType: raw.eventInfo?.organizerType || "",
@@ -607,8 +638,8 @@ export default function AddEvent() {
 				eventWebAddress: raw.eventInfo?.eventWebAddress || "",
 				year: raw.eventInfo?.year || "",
 				eventType: raw.eventInfo?.eventType || "",
-				attendanceType: raw.eventInfo?.attendanceType || "Public",
-				eventFormat: raw.eventInfo?.eventFormat || "In-person (physical location)",
+				attendanceType: raw.eventInfo?.attendanceType || "",
+				eventFormat: raw.eventInfo?.eventFormat || "",
 				startEndType: raw.eventInfo?.startEndType || "",
 				physicalEvent: raw.eventInfo?.physicalEvent ?? true,
 				organizerType: raw.eventInfo?.organizerType || "",
@@ -860,8 +891,10 @@ const handleDateSelect = (date, field) => {
 				? [
 						"publicContactName",
 						"publicEmail",
-						"year",
-						...(currentEvent.attendanceType === "Public" ? ["publicPhone"] : []),
+						// "year",
+						...(currentEvent.attendanceType === "Public"
+							? ["publicPhone", "eventWebAddress"]
+							: []),
 						"eventType",
 	
 					]
@@ -1113,6 +1146,10 @@ const handleDateSelect = (date, field) => {
 							</div>
 							{formStep === 0 && (
 								<div className="space-y-6 animate-fade-in">
+									
+									  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">
+    <span className="text-[#9326E0]">Create event for 2026</span>
+    </h1>
 									<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
 										{/* Public Contact Name */}
 										<div className="space-y-1">
@@ -1181,26 +1218,6 @@ const handleDateSelect = (date, field) => {
 													className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0]"
 												/>
 												<Building className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-											</div>
-										</div>
-
-										{/* Year */}
-										<div className="space-y-1">
-											<Label htmlFor="year">Year</Label>
-											<span className="text-red-500">
-												*
-											</span>
-											<div className="relative">
-												<Input
-													id="year"
-													name="year"
-													type="text"
-													value={currentEvent.year}
-													onChange={handleChange}
-													placeholder="Enter Year"
-													className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0]"
-												/>
-												<Globe className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
 											</div>
 										</div>
 
@@ -1282,13 +1299,21 @@ const handleDateSelect = (date, field) => {
 											</Select>
 										</div>
 
+										
+
 										{/* NEW: Attendance Type – Dropdown */}
-										<div className="space-y-1">
-											<Label htmlFor="attendanceType">
+										<div className="space-y-3">
+											<Label htmlFor="attendanceType" className="flex items-center gap-2">
 												Attendance Type{" "}
-												<span className="text-red-500">
+												<span className="text-red-500 ">
 													*
 												</span>
+												<span
+												
+												className="cursor-help text-slate-400 border border-slate-400 rounded-full w-4 h-4 flex items-center justify-center text-xs font-bold"
+											>
+												?
+											</span>
 											</Label>
 											<Select
 												value={
@@ -1307,10 +1332,10 @@ const handleDateSelect = (date, field) => {
 												<SelectTrigger
 													id="attendanceType"
 													className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9327e0]"
+													
 												>
 													<SelectValue placeholder="Select type" />
-												</SelectTrigger>
-												<SelectContent>
+													<SelectContent>
 													<SelectItem value="Public">
 														Public
 													</SelectItem>
@@ -1318,13 +1343,12 @@ const handleDateSelect = (date, field) => {
 														Private
 													</SelectItem>
 												</SelectContent>
+												</SelectTrigger>
+												
 											</Select>
 										</div>
 
-										{/* Public Phone + Event Web Address – in one row */}
-										<div className="col-span-1 sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
-											{/* Public Phone – conditional required/disabled */}
-											<div className="space-y-1">
+<div className="space-y-1">
 												<Label htmlFor="publicPhone">
 													Public Phone{" "}
 													{currentEvent.attendanceType ===
@@ -1363,6 +1387,9 @@ const handleDateSelect = (date, field) => {
 												</div>
 											</div>
 
+										{/* Public Phone + Event Web Address – in one row */}
+										<div className="col-span-1 sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
+											
 											{/* Event Web Address – conditional required/disabled */}
 											<div className="space-y-1">
 												<Label htmlFor="eventWebAddress">
@@ -2160,6 +2187,7 @@ const handleDateSelect = (date, field) => {
 											<span className="text-red-500">
 												*
 											</span>
+											
 										</Label>
 										<Input
 											id="expectedAttendance"
