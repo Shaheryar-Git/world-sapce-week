@@ -97,6 +97,13 @@ const EventDetail = () => {
   const [loading, setLoading] = useState(!state?.event);
   const [error, setError] = useState<string | null>(null);
 
+  
+  useEffect(() => {
+    fetchEventById();
+     document.querySelector(".leaflet-control-attribution")?.remove();
+  });
+
+
   // Fetch event by ID if not provided in state
   const fetchEventById = async () => {
     if (!event && eventId) {
@@ -121,11 +128,6 @@ const EventDetail = () => {
       }
     }
   };
-
-  useEffect(() => {
-     document.querySelector(".leaflet-control-attribution")?.remove();
-    fetchEventById();
-  }, [eventId]);
 
 
   // Small reusable block

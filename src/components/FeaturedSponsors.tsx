@@ -41,8 +41,8 @@ const FeaturedSponsors = () => {
       name: "Eutelsat Group",
       logo: (
         <img
-          src="https://www.worldspaceweek.org/wp-content/uploads/Eutelsat_Logo_Horizontal_Blanc.png"
-          alt="Eutelsat Group"
+          src="https://worldspaceweek.org/wp-content/uploads/texas-instruments.png"
+          alt="Texas Instruments"
           className="h-10 mx-auto"
         />
       ),
@@ -53,8 +53,8 @@ const FeaturedSponsors = () => {
       name: "General Dynamics Mission Systems",
       logo: (
         <img
-          src="https://www.worldspaceweek.org/wp-content/uploads/MS-logoWhite.png"
-          alt="General Dynamics Mission Systems"
+          src="https://worldspaceweek.org/wp-content/uploads/l3harris-white.png"
+          alt="L3harris"
           className="h-10 mx-auto"
         />
       ),
